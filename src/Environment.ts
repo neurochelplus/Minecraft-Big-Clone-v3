@@ -33,6 +33,7 @@ export class Environment {
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
 
     // 1. Setup Lights
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -42,8 +43,9 @@ export class Environment {
     this.dirLight.castShadow = true;
     
     // Optimize Shadows
-    this.dirLight.shadow.mapSize.width = 2048;
-    this.dirLight.shadow.mapSize.height = 2048;
+    const shadowSize = isMobile ? 1024 : 2048; // Lower res on mobile
+    this.dirLight.shadow.mapSize.width = shadowSize;
+    this.dirLight.shadow.mapSize.height = shadowSize;
     this.dirLight.shadow.camera.near = 0.1;
     this.dirLight.shadow.camera.far = 200;
     this.dirLight.shadow.camera.left = -50;

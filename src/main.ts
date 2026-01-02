@@ -5,7 +5,7 @@ import { ItemEntity } from './ItemEntity';
 import { MobManager } from './MobManager';
 import './style.css';
 
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
 if (isMobile) {
   document.body.classList.add('is-mobile');
 }
@@ -20,10 +20,11 @@ camera.rotation.order = 'YXZ';
 camera.position.set(8, 20, 20);
 camera.lookAt(8, 8, 8);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile }); // Disable AA on mobile for perf
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = true;
+// Cap pixel ratio to prevent lag on high-DPI phones
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+renderer.shadowMap.enabled = !isMobile; // Disable shadows by default on mobile
 document.body.appendChild(renderer.domElement);
 
 import { Environment } from './Environment';
@@ -1063,111 +1064,73 @@ if (isMobile) {
   
 
   joystickZone.addEventListener('touchstart', (e) => {
-
     e.preventDefault();
-
-    // If already dragging, ignore new touches in zone
-
     if (isDraggingStick) return;
 
-
-
     const touch = e.changedTouches[0];
-
     joystickTouchId = touch.identifier;
-
     
-
-    // Set center based on the zone
-
-    const rect = joystickZone.getBoundingClientRect();
-
-    const centerX = rect.left + rect.width / 2;
-
-    const centerY = rect.top + rect.height / 2;
-
+    // Floating Joystick: Center is where we first touch
+    stickStartX = touch.clientX;
+    stickStartY = touch.clientY;
     
-
-    stickStartX = centerX;
-
-    stickStartY = centerY;
-
+    // Move stick visual to finger immediately
+    joystickStick.style.transition = 'none';
+    joystickStick.style.transform = `translate(-50%, -50%)`; // Reset to center of container? No.
+    // Actually, we usually want the stick to appear under the finger.
+    // But the HTML layout has a fixed zone.
+    // Let's keep the zone fixed but the "center" of logic is the start point.
+    // Visual feedback: Move the stick relative to its neutral position?
+    // Current CSS likely centers the stick in the zone.
+    // Let's keep the stick visual centered in the zone initially, but move it relative to drag.
+    
+    // BETTER APPROACH for "Floating":
+    // The visual stick starts at the center of the ZONE.
+    // But logically, movement is relative to touch start.
+    // To make it intuitive, we should probably snap the visual stick to the touch start? 
+    // Or just treat the touch start as (0,0).
+    
     isDraggingStick = true;
-
   });
 
-
-
   joystickZone.addEventListener('touchmove', (e) => {
-
     e.preventDefault();
-
     if (!isDraggingStick || joystickTouchId === null) return;
-
     
-
     // Find the specific touch for the joystick
-
     let touch: Touch | undefined;
-
     for (let i = 0; i < e.changedTouches.length; i++) {
-
         if (e.changedTouches[i].identifier === joystickTouchId) {
-
             touch = e.changedTouches[i];
-
             break;
-
         }
-
     }
-
     
-
-    if (!touch) return; // The moving touch is not the joystick one
-
+    if (!touch) return; 
     
-
     const dx = touch.clientX - stickStartX;
-
     const dy = touch.clientY - stickStartY;
-
     
-
     // Clamp stick visual
-
     const maxDist = 40;
-
     const distance = Math.sqrt(dx*dx + dy*dy);
-
     const clampedDist = Math.min(distance, maxDist);
-
     const angle = Math.atan2(dy, dx);
-
     
-
     const stickX = Math.cos(angle) * clampedDist;
-
     const stickY = Math.sin(angle) * clampedDist;
-
     
-
+    // Update visual: The stick moves from its CSS center
     joystickStick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
-
     
-
     // Update movement flags
-
+    // Fix inversion: dy is negative when moving UP (forward)
+    // moveForward should be true if dy is negative
     const threshold = 10;
-
     moveForward = dy < -threshold;
-
     moveBackward = dy > threshold;
-
     moveLeft = dx < -threshold;
-
     moveRight = dx > threshold;
-
   });
 
 
