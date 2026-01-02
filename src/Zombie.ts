@@ -180,7 +180,55 @@ export class Zombie extends Mob {
     if (this.state === MobState.CHASE) {
       const dx = playerPos.x - this.mesh.position.x;
       const dz = playerPos.z - this.mesh.position.z;
-      const angle = Math.atan2(dx, dz);
+      let angle = Math.atan2(dx, dz);
+
+      // --- Obstacle Avoidance ---
+      const p = this.mesh.position;
+      const forward = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)).normalize();
+      const checkDist = 1.0;
+
+      // Helper to check if direction is blocked by a wall that we cannot auto-jump (2 blocks high)
+      const isBlocked = (origin: THREE.Vector3, dir: THREE.Vector3, d: number) => {
+          const target = origin.clone().add(dir.clone().multiplyScalar(d));
+          const tx = Math.floor(target.x);
+          const tz = Math.floor(target.z);
+          const ty = Math.floor(target.y);
+
+          // We are blocked if there is a block at Eye Level (y+1) OR (Body Level (y) AND Cannot Jump)
+          // Actually, simplistic view: Check if we will hit something we can't jump over.
+          // We can jump over 1 block. So check y+1.
+          
+          // Also check for big drops? (Not implemented here, they might fall)
+          
+          return this.world.hasBlock(tx, ty + 1, tz);
+      };
+
+      if (isBlocked(p, forward, checkDist)) {
+          // Main path blocked, try diagonals
+          const leftDir = forward.clone().applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 4);
+          const rightDir = forward.clone().applyAxisAngle(new THREE.Vector3(0,1,0), -Math.PI / 4);
+          
+          const leftBlocked = isBlocked(p, leftDir, checkDist);
+          const rightBlocked = isBlocked(p, rightDir, checkDist);
+          
+          if (!leftBlocked && !rightBlocked) {
+               // Both open, bias slightly?
+               angle += Math.PI / 4; 
+          } else if (!leftBlocked) {
+               angle += Math.PI / 4;
+          } else if (!rightBlocked) {
+               angle -= Math.PI / 4;
+          } else {
+               // Both diagonals blocked, try 90 degrees
+               const left90Dir = forward.clone().applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI / 2);
+               if (!isBlocked(p, left90Dir, checkDist)) {
+                   angle += Math.PI / 2;
+               } else {
+                   angle -= Math.PI / 2;
+               }
+          }
+      }
+
       this.mesh.rotation.y = angle;
 
       if (dist > 2.0) {
