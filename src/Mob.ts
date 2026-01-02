@@ -245,8 +245,29 @@ export class Mob {
     }
   }
 
+  public dispose() {
+    this.mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+                child.material.forEach((m: THREE.Material) => m.dispose());
+            } else {
+                child.material.dispose();
+            }
+        }
+    });
+    if (this.fireMesh) {
+        this.fireMesh.geometry.dispose();
+        (this.fireMesh.material as THREE.Material).dispose();
+    }
+  }
+
   protected onHorizontalCollision() {
-    // Hook for subclasses
+      if (this.isOnGround) {
+          // Simple auto-jump
+          this.velocity.y = Math.sqrt(2 * this.gravity * 1.25);
+          this.isOnGround = false;
+      }
   }
 
   protected checkCollision(): boolean {

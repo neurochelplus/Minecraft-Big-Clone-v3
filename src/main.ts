@@ -1348,13 +1348,23 @@ if (isMobile) {
 
 
 
-  document.addEventListener('touchmove', (e) => {
+    document.addEventListener('touchmove', (e) => {
 
-    if (lookTouchId === null) return;
 
-    
 
-     const target = e.target as HTMLElement;
+      if (lookTouchId === null) return;
+
+
+
+      if (e.cancelable) e.preventDefault();
+
+
+
+      
+
+
+
+       const target = e.target as HTMLElement;
 
     if (target.closest('#joystick-zone') || target.closest('.mob-btn') || target.closest('#inventory-menu') || target.closest('#hotbar') || target.closest('#btn-inv')) return;
 
@@ -1406,7 +1416,7 @@ if (isMobile) {
 
     camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
 
-  });
+  }, { passive: false });
 
 
 

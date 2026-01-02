@@ -96,7 +96,7 @@ export class MobManager {
       // Find highest block at x,z
       // Start checking from somewhat high up. Max terrain height is usually ~30-40 based on generation settings
       // TERRAIN_HEIGHT=8, OFFSET=4, plus some hills... let's check from 50 down.
-      for (let y = 50; y > 0; y--) {
+      for (let y = 100; y > 0; y--) {
           if (this.world.hasBlock(x, y, z)) {
               // Ensure space above is free (2 blocks)
               if (!this.world.hasBlock(x, y + 1, z) && !this.world.hasBlock(x, y + 2, z)) {
@@ -112,10 +112,7 @@ export class MobManager {
   private despawnMob(index: number) {
     const mob = this.mobs[index];
     this.scene.remove(mob.mesh);
-    // Dispose geometry/materials if needed, but we reuse the global noiseTexture.
-    // However, Mob creates unique materials for parts.
-    // In a real engine we'd pool these, but for now just let GC handle it or manually traverse.
-    // mob.dispose(); // Ideally Mob class should have a dispose method
+    mob.dispose();
     this.mobs.splice(index, 1);
   }
 }

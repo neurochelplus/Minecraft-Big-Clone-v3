@@ -602,17 +602,41 @@ export class World {
           // Or if neighbor is AIR.
           
           const checkNeighbor = (nx: number, ny: number, nz: number) => {
-             if (nx < 0 || nx >= this.chunkSize || 
-                 ny < 0 || ny >= this.chunkSize || 
-                 nz < 0 || nz >= this.chunkSize) {
-                 // Boundary of chunk.
-                 // Ideally we check global world block, but for now we assume boundary is transparent (or culled?)
-                 // If we assume transparent, we draw faces at chunk edges.
-                 // This is safer to avoid gaps.
-                 return true; 
+             // Calculate global coordinate
+             const gx = startX + nx;
+             const gz = startZ + nz;
+             const gy = ny; // Y is 0..15 relative to chunk, but we only have 1 vertical chunk layer so Y is global too basically.
+             // But wait, the loop uses y from 0..15. World.getHeight is different.
+             // Actually, `y` passed here is local (0-15).
+             
+             // If Y is out of vertical bounds (0-15), assume transparent (sky/void)
+             if (gy < 0 || gy >= this.chunkSize) return true;
+
+             // Determine which chunk this neighbor belongs to
+             const ncx = Math.floor(gx / this.chunkSize);
+             const ncz = Math.floor(gz / this.chunkSize);
+             
+             // If it's the current chunk (common case)
+             if (ncx === cx && ncz === cz) {
+                 const index = this.getBlockIndex(nx, ny, nz);
+                 return isTransparent(data[index]);
              }
-             const nType = data[this.getBlockIndex(nx, ny, nz)];
-             return isTransparent(nType);
+             
+             // Neighbor is in another chunk
+             const nKey = `${ncx},${ncz}`;
+             const nData = this.chunksData.get(nKey);
+             
+             // If neighbor chunk is loaded, check its block
+             if (nData) {
+                 // Calculate local coordinates in that chunk
+                 const locX = gx - ncx * this.chunkSize;
+                 const locZ = gz - ncz * this.chunkSize;
+                 const index = this.getBlockIndex(locX, gy, locZ);
+                 return isTransparent(nData[index]);
+             }
+             
+             // If neighbor chunk is NOT loaded, we must draw the face to prevent "holes" into the void
+             return true; 
           };
 
           // Top
