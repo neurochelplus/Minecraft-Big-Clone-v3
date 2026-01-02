@@ -1,0 +1,354 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  user-select: none;
+  font-family: sans-serif;
+}
+canvas {
+  display: block;
+}
+#blocker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: white;
+  z-index: 10;
+}
+#instructions {
+  font-size: 24px;
+  cursor: pointer;
+  text-align: center;
+}
+#ui-container {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+#health-bar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 25px;
+}
+.hp-unit {
+  width: 10px;
+  height: 10px;
+  background-color: #ff3333;
+  border: 1px solid #500;
+  box-shadow: 1px 1px 0 #000;
+}
+.hp-unit.empty {
+  background-color: #333;
+  border: 1px solid #111;
+}
+#hotbar-label {
+  margin-bottom: 5px;
+  color: white;
+  font-size: 16px;
+  text-shadow: 1px 1px 2px black;
+  opacity: 0;
+  transition: opacity 0.5s;
+  height: 20px;
+}
+#hotbar {
+  display: flex;
+  gap: 4px;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  border-radius: 4px;
+  pointer-events: auto;
+}
+.slot {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #555;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-family: monospace;
+  font-size: 14px;
+  position: relative;
+  cursor: pointer;
+}
+.slot:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.slot.active {
+  border-color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.slot-count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
+}
+.block-icon {
+  width: 24px;
+  height: 24px;
+  background-size: cover;
+  image-rendering: pixelated;
+  background-image: var(--noise-url);
+  background-blend-mode: overlay;
+  box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+
+/* Inventory Menu */
+#inventory-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 20px;
+  border-radius: 8px;
+  color: white;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+}
+.slot-hotbar-separator {
+  margin-top: 15px; 
+}
+
+#drag-icon {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+  display: none;
+}
+
+#tooltip {
+  position: absolute;
+  background-color: rgba(0,0,0,0.8);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 30;
+  display: none;
+  border: 1px solid #555;
+    white-space: nowrap;
+  }
+  
+  /* Damage Flash */
+  #damage-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: red;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 15;
+    transition: opacity 0.5s ease-out;
+  }
+  
+  #crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 24px;
+    pointer-events: none;
+    z-index: 20;
+    text-shadow: 1px 1px 1px black;
+  }
+  
+  /* Minecraft Menus */
+  #main-menu, #pause-menu, #settings-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAXNSR0IArs4c6QAAACklEQVQImWNgQAYiIiL/QTSjBgMDIyMjAxKHiUGAgYGBAR0wMaADJgYAAD0CBAh7W1UAAAAASUVORK5CYII=') repeat; /* Dirt texture pattern approximation */
+    background-color: #222;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    text-align: center;
+  }
+  
+  #main-menu h1, #pause-menu h2, #settings-menu h2 {
+    font-size: 48px;
+    margin-bottom: 40px;
+    text-shadow: 4px 4px 0px #3f3f3f;
+  }
+  
+  .setting-item {
+      margin: 20px;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-shadow: 2px 2px 0px #3f3f3f;
+  }
+  
+  .setting-item input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+  }
+
+  .minecraft-btn {
+    width: 400px;
+    height: 40px;
+    margin: 10px;
+    background-color: #7d7d7d;
+    border: 2px solid #000;
+    border-top-color: #a0a0a0;
+    border-left-color: #a0a0a0;
+    border-bottom-color: #555;
+    border-right-color: #555;
+    color: #fff;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 20px;
+    cursor: pointer;
+    text-shadow: 2px 2px 0px #3f3f3f;
+    box-shadow: inset -2px -2px 0px #555, inset 2px 2px 0px #a0a0a0;
+  }
+
+  .minecraft-btn:hover {
+    background-color: #8f8f8f;
+    border-top-color: #b4b4b4;
+    border-left-color: #b4b4b4;
+    color: #ffffa0;
+  }
+
+  .minecraft-btn:active {
+    background-color: #5c5c5c;
+    border-top-color: #444;
+    border-left-color: #444;
+    border-bottom-color: #888;
+    border-right-color: #888;
+    box-shadow: inset 2px 2px 0px #333;
+  }
+
+  /* Mobile Controls */
+  #mobile-ui {
+    display: none; /* Hidden by default, shown via JS if mobile */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+  }
+  
+  .is-mobile #mobile-ui {
+    display: block;
+  }
+  
+  /* Hide standard PC overlay on mobile if needed */
+  .is-mobile #blocker, .is-mobile #instructions {
+    display: none !important;
+  }
+  
+  #joystick-zone {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 150px;
+    height: 150px;
+    pointer-events: auto;
+  }
+  
+  #joystick-base {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    position: relative;
+  }
+  
+  #joystick-stick {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  
+  #mobile-actions {
+    position: absolute;
+    bottom: 40px;
+    right: 20px;
+    display: flex;
+    gap: 15px;
+    pointer-events: auto;
+  }
+  
+  .mob-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    user-select: none;
+  }
+  
+  .mob-btn:active {
+    background: rgba(255, 255, 255, 0.5);
+  }
+  
+  #btn-inv {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+    pointer-events: auto;
+  }
+  
+  #btn-menu {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+    pointer-events: auto;
+  }  

@@ -1,0 +1,17 @@
+{
+  "name": "Minecraft Big Clone",
+  "short_name": "Minecraft",
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#87ceeb",
+  "theme_color": "#87ceeb",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
