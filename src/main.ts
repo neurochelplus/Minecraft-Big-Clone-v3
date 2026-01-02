@@ -524,6 +524,7 @@ scene.add(crackMesh);
 
 // State
 let isBreaking = false;
+let isAttackPressed = false;
 let breakStartTime = 0;
 let currentBreakBlock = new THREE.Vector3();
 let currentBreakId = 0;
@@ -791,6 +792,7 @@ document.addEventListener('mousedown', (event) => {
   if (isInventoryOpen) return;
   
   if (event.button === 0) {
+      isAttackPressed = true;
       performAttack(); // Hit mobs
       startBreaking(); // Start mining block
   }
@@ -798,6 +800,7 @@ document.addEventListener('mousedown', (event) => {
 });
 
 document.addEventListener('mouseup', () => {
+   if (isAttackPressed) isAttackPressed = false;
    isBreaking = false;
    crackMesh.visible = false;
 });
@@ -872,6 +875,11 @@ function animate() {
   
   updateBreaking(time);
   
+  if (isAttackPressed && !isPaused && isGameStarted) {
+      if (!isBreaking) startBreaking();
+      performAttack();
+  }
+
   // Update Entities & Pickup
   for (let i = entities.length - 1; i >= 0; i--) {
     const entity = entities[i];
@@ -1205,59 +1213,72 @@ if (isMobile) {
 
 
 
-    document.getElementById('btn-attack')!.addEventListener('touchstart', (e) => {
+    const btnAttack = document.getElementById('btn-attack')!;
+    let attackTouchId: number | null = null;
+    let lastAttackX = 0;
+    let lastAttackY = 0;
 
+    btnAttack.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (attackTouchId !== null) return;
 
+        const touch = e.changedTouches[0];
+        attackTouchId = touch.identifier;
+        lastAttackX = touch.clientX;
+        lastAttackY = touch.clientY;
 
-      e.preventDefault();
-
-
-
-      performAttack();
-
-
-
-      startBreaking();
-
-
-
+        isAttackPressed = true;
+        performAttack();
+        startBreaking();
     });
 
-
-
-  
-
-
-
-    const stopBreakingMobile = (e: TouchEvent) => {
-
-
-
+    btnAttack.addEventListener('touchmove', (e) => {
         e.preventDefault();
+        if (attackTouchId === null) return;
 
+        let touch: Touch | undefined;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === attackTouchId) {
+                touch = e.changedTouches[i];
+                break;
+            }
+        }
+        if (!touch) return;
 
+        const dx = touch.clientX - lastAttackX;
+        const dy = touch.clientY - lastAttackY;
+        
+        lastAttackX = touch.clientX;
+        lastAttackY = touch.clientY;
 
-        isBreaking = false;
+        const SENSITIVITY = 0.005;
+        controls.object.rotation.y -= dx * SENSITIVITY;
+        camera.rotation.x -= dy * SENSITIVITY;
+        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+    });
 
+    const endAttack = (e: TouchEvent) => {
+        e.preventDefault();
+        if (attackTouchId === null) return;
+        
+        let touchFound = false;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+             if (e.changedTouches[i].identifier === attackTouchId) {
+                 touchFound = true;
+                 break;
+             }
+        }
 
-
-        crackMesh.visible = false;
-
-
-
+        if (touchFound) {
+            isAttackPressed = false;
+            isBreaking = false;
+            crackMesh.visible = false;
+            attackTouchId = null;
+        }
     };
 
-
-
-  
-
-
-
-    document.getElementById('btn-attack')!.addEventListener('touchend', stopBreakingMobile);
-
-
-
-    document.getElementById('btn-attack')!.addEventListener('touchcancel', stopBreakingMobile);
+    btnAttack.addEventListener('touchend', endAttack);
+    btnAttack.addEventListener('touchcancel', endAttack);
 
 
 
