@@ -401,6 +401,17 @@ function updateSlotVisuals(index: number) {
       if (slot.id !== 0 && slot.count > 0) {
         icon.style.display = 'block';
         icon.style.backgroundColor = getBlockColor(slot.id);
+        
+        // Remove special classes first
+        icon.classList.remove('item-stick', 'item-planks');
+        
+        if (slot.id === 8) { // Stick
+            icon.classList.add('item-stick');
+            icon.style.backgroundColor = 'transparent'; // Let CSS handle it
+        } else if (slot.id === 7) { // Planks
+            icon.classList.add('item-planks');
+        }
+        
         countEl.innerText = slot.count.toString();
       } else {
         icon.style.display = 'none';
@@ -513,6 +524,13 @@ function updateDragIcon() {
     icon.style.width = '32px';
     icon.style.height = '32px';
     icon.style.backgroundColor = getBlockColor(draggedItem.id);
+    
+    if (draggedItem.id === 8) {
+        icon.classList.add('item-stick');
+        icon.style.backgroundColor = 'transparent';
+    } else if (draggedItem.id === 7) {
+        icon.classList.add('item-planks');
+    }
     
     const count = document.createElement('div');
     count.className = 'slot-count';

@@ -189,31 +189,43 @@ export class World {
   // --- Core Logic ---
 
   private createNoiseTexture(): THREE.DataTexture {
-    const width = 32;
+    const width = 48; // 16 * 3 (Noise, Leaves, Planks)
     const height = 16;
     const data = new Uint8Array(width * height * 4); // RGBA
 
     for (let i = 0; i < width * height; i++) {
       const stride = i * 4;
       const x = i % width;
+      const y = Math.floor(i / width);
       
       const v = Math.floor(Math.random() * (255 - 150) + 150); // 150-255
       data[stride] = v;     // R
       data[stride + 1] = v; // G
       data[stride + 2] = v; // B
+      data[stride + 3] = 255; // Default Alpha
 
-      // Alpha logic
-      if (x >= 16) {
-          // Right half: Leaves with transparency
-          // Simple noise for transparency: random dots
+      // Alpha/Texture logic
+      if (x >= 16 && x < 32) {
+          // Leaves (Middle 16)
           if (Math.random() < 0.4) {
              data[stride + 3] = 0;
-          } else {
-             data[stride + 3] = 255;
           }
-      } else {
-          // Left half: Solid
-          data[stride + 3] = 255;
+      } else if (x >= 32) {
+          // Planks (Right 16)
+          // Base: much smoother, brighter "wood"
+          // We overwrite the noisy 'v' with something calmer
+          const woodGrain = 230 + Math.random() * 20; // 230-250 (Light)
+          data[stride] = woodGrain;
+          data[stride + 1] = woodGrain;
+          data[stride + 2] = woodGrain;
+
+          // Horizontal stripes every 4 pixels
+          // Make them 1 pixel thick and DARK for contrast
+          if (y % 4 === 0) {
+             data[stride] = 100;
+             data[stride + 1] = 100;
+             data[stride + 2] = 100;
+          }
       }
     }
 
@@ -568,14 +580,19 @@ export class World {
       }
 
       // UVs 
-      // Atlas: Left half (0-0.5) is Solid, Right half (0.5-1.0) is Transparent/Leaves
-      // Inset to prevent bleeding
+      // Atlas: 
+      // 0.0 - 0.33: Solid (Noise)
+      // 0.33 - 0.66: Leaves (Transparent)
+      // 0.66 - 1.0: Planks (Striped)
       const uvInset = 0.001;
       let u0 = 0 + uvInset;
-      let u1 = 0.5 - uvInset;
+      let u1 = 0.333 - uvInset;
       
       if (type === BLOCK.LEAVES) {
-          u0 = 0.5 + uvInset;
+          u0 = 0.333 + uvInset;
+          u1 = 0.666 - uvInset;
+      } else if (type === BLOCK.PLANKS) {
+          u0 = 0.666 + uvInset;
           u1 = 1.0 - uvInset;
       }
 

@@ -109,6 +109,19 @@ canvas {
   pointer-events: none;
 }
 
+/* Custom Item Icons */
+.block-icon.item-stick {
+    background-image: linear-gradient(45deg, transparent 40%, #654321 40%, #654321 60%, transparent 60%);
+    background-blend-mode: normal; /* No noise overlay needed for stick simplicity */
+    box-shadow: none; /* Remove block shadow */
+}
+
+.block-icon.item-planks {
+    /* Mix noise with horizontal stripes */
+    background-image: var(--noise-url), repeating-linear-gradient(0deg, transparent, transparent 20%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.3) 25%);
+    background-blend-mode: overlay, normal;
+}
+
 /* Inventory Menu */
 #inventory-menu {
   position: absolute;
