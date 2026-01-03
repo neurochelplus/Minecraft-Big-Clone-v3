@@ -2,8 +2,40 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { World, BLOCK } from './World';
 import { ItemEntity } from './ItemEntity';
+import { TOOL_DEFS, generateToolTexture } from './ToolTextures';
+import type { GeneratedTexture } from './ToolTextures';
 import { MobManager } from './MobManager';
 import './style.css';
+
+// Tool Textures Registry
+const TOOL_TEXTURES: Record<number, GeneratedTexture> = {};
+
+function initToolTextures() {
+    try {
+        if (!BLOCK) {
+            console.error("BLOCK is undefined! World module failed to load?");
+            return;
+        }
+        
+        console.log("Generating tool textures...");
+        // TOOL_TEXTURES[BLOCK.STICK] -> Handled via CSS now
+        
+        TOOL_TEXTURES[BLOCK.WOODEN_SWORD] = generateToolTexture(TOOL_DEFS.WOODEN_SWORD.pattern, TOOL_DEFS.WOODEN_SWORD.color);
+        TOOL_TEXTURES[BLOCK.STONE_SWORD] = generateToolTexture(TOOL_DEFS.STONE_SWORD.pattern, TOOL_DEFS.STONE_SWORD.color);
+        
+        TOOL_TEXTURES[BLOCK.WOODEN_PICKAXE] = generateToolTexture(TOOL_DEFS.WOODEN_PICKAXE.pattern, TOOL_DEFS.WOODEN_PICKAXE.color);
+        TOOL_TEXTURES[BLOCK.STONE_PICKAXE] = generateToolTexture(TOOL_DEFS.STONE_PICKAXE.pattern, TOOL_DEFS.STONE_PICKAXE.color);
+        
+        TOOL_TEXTURES[BLOCK.WOODEN_AXE] = generateToolTexture(TOOL_DEFS.WOODEN_AXE.pattern, TOOL_DEFS.WOODEN_AXE.color);
+        TOOL_TEXTURES[BLOCK.STONE_AXE] = generateToolTexture(TOOL_DEFS.STONE_AXE.pattern, TOOL_DEFS.STONE_AXE.color);
+        console.log("Tool textures generated.");
+    } catch (e) {
+        console.error("Failed to generate tool textures:", e);
+    }
+}
+
+// Initialize later to ensure dependencies are ready
+initToolTextures();
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
 if (isMobile) {
@@ -418,19 +450,22 @@ function updateSlotVisuals(index: number) {
         // Remove special classes first
         icon.classList.remove('item-stick', 'item-planks', 'item-tool', 'tool-sword', 'tool-pickaxe', 'tool-axe', 'mat-wood', 'mat-stone');
         
-        if (slot.id === 8) { // Stick
-            icon.classList.add('item-stick');
-            icon.style.backgroundColor = 'transparent';
+        // Reset styles
+        icon.style.backgroundImage = '';
+        icon.style.backgroundColor = '';
+
+        if (TOOL_TEXTURES[slot.id]) {
+            icon.classList.add('item-tool'); // Keeps size/reset
+            icon.style.backgroundImage = `url(${TOOL_TEXTURES[slot.id].dataUrl})`;
+        } else if (slot.id === 8) { // Stick
+             icon.classList.add('item-stick');
+             icon.style.backgroundColor = 'transparent';
         } else if (slot.id === 7) { // Planks
-            icon.classList.add('item-planks');
-        } else if (slot.id >= 20) { // Tools
-            icon.classList.add('item-tool');
-            if (slot.id === 20 || slot.id === 21) icon.classList.add('tool-sword');
-            if (slot.id === 22 || slot.id === 23) icon.classList.add('tool-pickaxe');
-            if (slot.id === 24 || slot.id === 25) icon.classList.add('tool-axe');
-            
-            if (slot.id % 2 === 0) icon.classList.add('mat-wood'); // 20, 22, 24
-            else icon.classList.add('mat-stone'); // 21, 23, 25
+             icon.classList.add('item-planks');
+             icon.style.backgroundColor = getBlockColor(slot.id);
+        } else {
+             icon.style.backgroundColor = getBlockColor(slot.id);
+             icon.style.backgroundImage = 'var(--noise-url)'; // Restore noise for blocks
         }
         
         countEl.innerText = slot.count.toString();
@@ -544,21 +579,18 @@ function updateDragIcon() {
     icon.className = 'block-icon';
     icon.style.width = '32px';
     icon.style.height = '32px';
-    icon.style.backgroundColor = getBlockColor(draggedItem.id);
     
-    if (draggedItem.id === 8) {
+    if (TOOL_TEXTURES[draggedItem.id]) {
+        icon.classList.add('item-tool');
+        icon.style.backgroundImage = `url(${TOOL_TEXTURES[draggedItem.id].dataUrl})`;
+    } else if (draggedItem.id === 8) {
         icon.classList.add('item-stick');
         icon.style.backgroundColor = 'transparent';
     } else if (draggedItem.id === 7) {
         icon.classList.add('item-planks');
-    } else if (draggedItem.id >= 20) {
-        icon.classList.add('item-tool');
-        if (draggedItem.id === 20 || draggedItem.id === 21) icon.classList.add('tool-sword');
-        if (draggedItem.id === 22 || draggedItem.id === 23) icon.classList.add('tool-pickaxe');
-        if (draggedItem.id === 24 || draggedItem.id === 25) icon.classList.add('tool-axe');
-        
-        if (draggedItem.id % 2 === 0) icon.classList.add('mat-wood');
-        else icon.classList.add('mat-stone');
+        icon.style.backgroundColor = getBlockColor(draggedItem.id);
+    } else {
+        icon.style.backgroundColor = getBlockColor(draggedItem.id);
     }
     
     const count = document.createElement('div');
@@ -753,7 +785,11 @@ function updateBreaking(time: number) {
         
         // Drop Item
         if (currentBreakId !== 0) {
-            entities.push(new ItemEntity(world, scene, x, y, z, currentBreakId, world.noiseTexture));
+            let toolTexture = null;
+            if (TOOL_TEXTURES[currentBreakId]) {
+                 toolTexture = TOOL_TEXTURES[currentBreakId].texture;
+            }
+            entities.push(new ItemEntity(world, scene, x, y, z, currentBreakId, world.noiseTexture, toolTexture));
         }
         
         world.setBlock(x, y, z, 0); // AIR

@@ -111,76 +111,22 @@ canvas {
 
 /* Custom Item Icons */
 .block-icon.item-stick {
-    background-image: linear-gradient(45deg, transparent 45%, #654321 45%, #654321 55%, transparent 55%);
+    background-image: linear-gradient(45deg, transparent 40%, #654321 40%, #654321 60%, transparent 60%);
     background-blend-mode: normal; 
     box-shadow: none; 
 }
-
 .block-icon.item-planks {
     background-image: var(--noise-url), repeating-linear-gradient(0deg, transparent, transparent 20%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.3) 25%);
     background-blend-mode: overlay, normal;
 }
 
-/* Tools */
+/* Tools now use Generated DataURLs */
 .block-icon.item-tool {
     background-color: transparent !important;
     background-blend-mode: normal;
     box-shadow: none;
+    /* Image set via JS */
 }
-
-/* Material Colors */
-.block-icon.mat-wood { --tool-head: #8B5A2B; --tool-handle: #654321; }
-.block-icon.mat-stone { --tool-head: #808080; --tool-handle: #654321; }
-
-/* Sword Icon - Simplified */
-.block-icon.tool-sword {
-    background: 
-        /* Blade Tip */
-        linear-gradient(45deg, transparent 60%, var(--tool-head) 60%),
-        /* Blade Body */
-        linear-gradient(45deg, transparent 40%, var(--tool-head) 40%, var(--tool-head) 60%, transparent 60%),
-        /* Handle */
-        linear-gradient(45deg, transparent 40%, var(--tool-handle) 40%, var(--tool-handle) 60%, transparent 60%),
-        /* Crossguard (Horizontal-ish line) */
-        linear-gradient(135deg, transparent 45%, var(--tool-handle) 45%, var(--tool-handle) 55%, transparent 55%);
-    
-    background-size: 100% 100%, 100% 100%, 40% 40%, 30% 30%;
-    background-position: 0 0, 0 0, 0% 100%, 25% 75%;
-    background-repeat: no-repeat;
-}
-
-/* Pickaxe Icon - Simplified */
-.block-icon.tool-pickaxe {
-    background:
-        /* Head (Curved Arc) */
-        radial-gradient(circle at 100% 0%, transparent 40%, var(--tool-head) 40%, var(--tool-head) 60%, transparent 60%),
-        /* Handle */
-        linear-gradient(45deg, transparent 45%, var(--tool-handle) 45%, var(--tool-handle) 55%, transparent 55%);
-        
-    background-size: 70% 70%, 100% 100%;
-    background-position: 10% 10%, 0 0;
-    background-repeat: no-repeat;
-}
-
-/* Axe Icon - Simplified */
-.block-icon.tool-axe {
-    background:
-        /* Head Left (Back) */
-        linear-gradient(to right, var(--tool-head) 100%, transparent 0%),
-        /* Handle */
-        linear-gradient(45deg, transparent 45%, var(--tool-handle) 45%, var(--tool-handle) 55%, transparent 55%);
-    
-    /* Using mask/clip-path would be better but simple CSS shapes: */
-    /* Let's try just a Box for head */
-    background-image: 
-        linear-gradient(110deg, transparent 20%, var(--tool-head) 20%, var(--tool-head) 50%, transparent 50%),
-        linear-gradient(45deg, transparent 45%, var(--tool-handle) 45%, var(--tool-handle) 55%, transparent 55%);
-
-    background-size: 60% 60%, 100% 100%;
-    background-position: 80% 0%, 0 0;
-    background-repeat: no-repeat;
-}
-
 
 /* Inventory Menu */
 #inventory-menu {

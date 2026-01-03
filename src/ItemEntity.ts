@@ -16,60 +16,79 @@ export class ItemEntity {
   private isOnGround: boolean = false;
   private groundY: number = 0; // To store the base Y for floating
 
-  constructor(world: World, scene: THREE.Scene, x: number, y: number, z: number, type: number, texture: THREE.DataTexture) {
+  constructor(world: World, scene: THREE.Scene, x: number, y: number, z: number, type: number, blockTexture: THREE.DataTexture, itemTexture: THREE.CanvasTexture | null = null) {
     this.type = type;
     this.scene = scene;
     this.world = world;
     this.timeOffset = Math.random() * 100;
     this.creationTime = performance.now();
 
-    const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-    
-    // Generate colors
-    const colors: number[] = [];
-    const count = geometry.attributes.position.count;
-    
-    // Color Logic
-    let r = 1, g = 1, b = 1;
-    if (type === 1) { r=0.33; g=0.6; b=0.33; } // Grass (Green)
-    else if (type === 2) { r=0.54; g=0.27; b=0.07; } // Dirt
-    else if (type === 3) { r=0.5; g=0.5; b=0.5; } // Stone
-    else if (type === 4) { r=0.13; g=0.13; b=0.13; } // Bedrock
-    else if (type === 5) { r=0.4; g=0.2; b=0.0; } // Wood
-    else if (type === 6) { r=0.13; g=0.55; b=0.13; } // Leaves
+    let geometry: THREE.BufferGeometry;
+    let material: THREE.MeshStandardMaterial;
 
-    for (let i = 0; i < count; i++) {
-      colors.push(r, g, b);
+    if (itemTexture) {
+        // Flat Item (Tool/Stick)
+        geometry = new THREE.PlaneGeometry(0.5, 0.5);
+        // Plane needs to be visible from both sides
+        material = new THREE.MeshStandardMaterial({
+            map: itemTexture,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            roughness: 0.8
+        });
+    } else {
+        // Block Item
+        geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        
+        // Generate colors
+        const colors: number[] = [];
+        const count = geometry.attributes.position.count;
+        
+        // Color Logic
+        let r = 1, g = 1, b = 1;
+        if (type === 1) { r=0.33; g=0.6; b=0.33; } // Grass (Green)
+        else if (type === 2) { r=0.54; g=0.27; b=0.07; } // Dirt
+        else if (type === 3) { r=0.5; g=0.5; b=0.5; } // Stone
+        else if (type === 4) { r=0.13; g=0.13; b=0.13; } // Bedrock
+        else if (type === 5) { r=0.4; g=0.2; b=0.0; } // Wood
+        else if (type === 6) { r=0.13; g=0.55; b=0.13; } // Leaves
+        else if (type === 7) { r=0.76; g=0.60; b=0.42; } // Planks
+        else if (type === 8) { r=0.4; g=0.2; b=0.0; } // Stick (Dark Brown)
+
+        for (let i = 0; i < count; i++) {
+          colors.push(r, g, b);
+        }
+        
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        // UV Fix
+        const uvAttr = geometry.getAttribute('uv');
+        if (uvAttr) {
+             let uMin = 0;
+             let uMax = 0.333;
+
+             if (type === 6) { // Leaves
+                 uMin = 0.333;
+                 uMax = 0.666;
+             } else if (type === 7) { // Planks
+                 uMin = 0.666;
+                 uMax = 1.0;
+             }
+
+             for(let i=0; i<uvAttr.count; i++) {
+                 const u = uvAttr.getX(i);
+                 uvAttr.setX(i, uMin + u * (uMax - uMin));
+             }
+             uvAttr.needsUpdate = true;
+        }
+        
+        material = new THREE.MeshStandardMaterial({ 
+          map: blockTexture,
+          vertexColors: true,
+          roughness: 0.8
+        });
     }
-    
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-    // UV Fix
-    const uvAttr = geometry.getAttribute('uv');
-    if (uvAttr) {
-         let uMin = 0;
-         let uMax = 0.333;
-
-         if (type === 6) { // Leaves
-             uMin = 0.333;
-             uMax = 0.666;
-         } else if (type === 7) { // Planks
-             uMin = 0.666;
-             uMax = 1.0;
-         }
-
-         for(let i=0; i<uvAttr.count; i++) {
-             const u = uvAttr.getX(i);
-             uvAttr.setX(i, uMin + u * (uMax - uMin));
-         }
-         uvAttr.needsUpdate = true;
-    }
-
-    const material = new THREE.MeshStandardMaterial({ 
-      map: texture,
-      vertexColors: true,
-      roughness: 0.8
-    });
     
     this.mesh = new THREE.Mesh(geometry, material);
     (this.mesh as any).isItem = true;
