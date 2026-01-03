@@ -12,7 +12,13 @@ export const BLOCK = {
   WOOD: 5,
   LEAVES: 6,
   PLANKS: 7,
-  STICK: 8
+  STICK: 8,
+  WOODEN_SWORD: 20,
+  STONE_SWORD: 21,
+  WOODEN_PICKAXE: 22,
+  STONE_PICKAXE: 23,
+  WOODEN_AXE: 24,
+  STONE_AXE: 25
 };
 
 type Chunk = {
@@ -329,16 +335,39 @@ export class World {
     return data[index] !== BLOCK.AIR;
   }
 
-  public getBreakTime(type: number): number {
-    switch (type) {
-        case BLOCK.LEAVES: return 1000;
+  public getBreakTime(blockType: number, toolId: number = 0): number {
+    let baseTime = 1000;
+    
+    // Base times
+    switch (blockType) {
+        case BLOCK.LEAVES: baseTime = 500; break; // Faster leaves
         case BLOCK.DIRT:
-        case BLOCK.GRASS: return 3000;
-        case BLOCK.WOOD: return 5000;
-        case BLOCK.STONE: return 20000;
+        case BLOCK.GRASS: baseTime = 1000; break; // Shovel territory (not imp yet)
+        case BLOCK.WOOD: 
+        case BLOCK.PLANKS: baseTime = 3000; break;
+        case BLOCK.STONE: baseTime = 5000; break;
         case BLOCK.BEDROCK: return Infinity;
-        default: return 1000;
+        default: baseTime = 1000; break;
     }
+
+    // Tool Multipliers
+    let multiplier = 1;
+
+    // AXES (Wood, Planks)
+    if (toolId === BLOCK.WOODEN_AXE || toolId === BLOCK.STONE_AXE) {
+        if (blockType === BLOCK.WOOD || blockType === BLOCK.PLANKS || blockType === BLOCK.LEAVES) {
+            multiplier = (toolId === BLOCK.STONE_AXE) ? 4 : 2;
+        }
+    }
+
+    // PICKAXES (Stone)
+    if (toolId === BLOCK.WOODEN_PICKAXE || toolId === BLOCK.STONE_PICKAXE) {
+        if (blockType === BLOCK.STONE) {
+             multiplier = (toolId === BLOCK.STONE_PICKAXE) ? 4 : 2;
+        }
+    }
+
+    return baseTime / multiplier;
   }
 
   public getBlock(x: number, y: number, z: number): number {
@@ -550,7 +579,8 @@ export class World {
       else if (type === BLOCK.WOOD) { r=0.4; g=0.2; b=0.0; } // Dark Brown
       else if (type === BLOCK.LEAVES) { r=0.13; g=0.55; b=0.13; } // Forest Green
       else if (type === BLOCK.PLANKS) { r=0.76; g=0.60; b=0.42; } // Light Wood
-      else if (type === BLOCK.STICK) { r=0.4; g=0.2; b=0.0; } // Stick color (if ever placed)
+      else if (type === BLOCK.STICK) { r=0.4; g=0.2; b=0.0; } // Stick
+      else if (type >= 20) { r=1; g=0; b=1; } // Error/Tool color (Magenta)
 
       // Append data based on side
       if (side === 'top') {

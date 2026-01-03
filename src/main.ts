@@ -147,7 +147,13 @@ const BLOCK_NAMES: Record<number, string> = {
   5: 'Дерево',
   6: 'Листва',
   7: 'Доски',
-  8: 'Палка'
+  8: 'Палка',
+  20: 'Деревянный меч',
+  21: 'Каменный меч',
+  22: 'Деревянная кирка',
+  23: 'Каменная кирка',
+  24: 'Деревянный топор',
+  25: 'Каменный топор'
 };
 
 // Inventory State
@@ -231,7 +237,13 @@ function handleCommand(cmd: string) {
             'wood': 5,
             'leaves': 6,
             'planks': 7,
-            'stick': 8
+            'stick': 8,
+            'wooden_sword': 20,
+            'stone_sword': 21,
+            'wooden_pickaxe': 22,
+            'stone_pickaxe': 23,
+            'wooden_axe': 24,
+            'stone_axe': 25
         };
 
         if (ITEM_MAP[itemName]) {
@@ -309,6 +321,7 @@ function getBlockColor(id: number) {
   if (id === 6) return '#228B22';
   if (id === 7) return '#C29A6B';
   if (id === 8) return '#654321';
+  if (id >= 20) return 'transparent';
   return '#fff';
 }
 
@@ -403,13 +416,21 @@ function updateSlotVisuals(index: number) {
         icon.style.backgroundColor = getBlockColor(slot.id);
         
         // Remove special classes first
-        icon.classList.remove('item-stick', 'item-planks');
+        icon.classList.remove('item-stick', 'item-planks', 'item-tool', 'tool-sword', 'tool-pickaxe', 'tool-axe', 'mat-wood', 'mat-stone');
         
         if (slot.id === 8) { // Stick
             icon.classList.add('item-stick');
-            icon.style.backgroundColor = 'transparent'; // Let CSS handle it
+            icon.style.backgroundColor = 'transparent';
         } else if (slot.id === 7) { // Planks
             icon.classList.add('item-planks');
+        } else if (slot.id >= 20) { // Tools
+            icon.classList.add('item-tool');
+            if (slot.id === 20 || slot.id === 21) icon.classList.add('tool-sword');
+            if (slot.id === 22 || slot.id === 23) icon.classList.add('tool-pickaxe');
+            if (slot.id === 24 || slot.id === 25) icon.classList.add('tool-axe');
+            
+            if (slot.id % 2 === 0) icon.classList.add('mat-wood'); // 20, 22, 24
+            else icon.classList.add('mat-stone'); // 21, 23, 25
         }
         
         countEl.innerText = slot.count.toString();
@@ -530,6 +551,14 @@ function updateDragIcon() {
         icon.style.backgroundColor = 'transparent';
     } else if (draggedItem.id === 7) {
         icon.classList.add('item-planks');
+    } else if (draggedItem.id >= 20) {
+        icon.classList.add('item-tool');
+        if (draggedItem.id === 20 || draggedItem.id === 21) icon.classList.add('tool-sword');
+        if (draggedItem.id === 22 || draggedItem.id === 23) icon.classList.add('tool-pickaxe');
+        if (draggedItem.id === 24 || draggedItem.id === 25) icon.classList.add('tool-axe');
+        
+        if (draggedItem.id % 2 === 0) icon.classList.add('mat-wood');
+        else icon.classList.add('mat-stone');
     }
     
     const count = document.createElement('div');
@@ -711,7 +740,8 @@ function updateBreaking(time: number) {
     }
 
     // Update Progress
-    const duration = world.getBreakTime(currentBreakId);
+    const toolId = inventorySlots[selectedSlot].id;
+    const duration = world.getBreakTime(currentBreakId, toolId);
     const elapsed = time - breakStartTime;
     const progress = Math.min(elapsed / duration, 1.0);
 
@@ -851,6 +881,16 @@ function performAttack() {
      const now = Date.now();
      if (now - lastPlayerAttackTime < ATTACK_COOLDOWN) return;
      lastPlayerAttackTime = now;
+     
+     // Calculate Damage
+     let damage = 1;
+     const toolId = inventorySlots[selectedSlot].id;
+     if (toolId === 20) damage = 4; // Wood Sword
+     else if (toolId === 21) damage = 5; // Stone Sword
+     else if (toolId === 24) damage = 3; // Wood Axe
+     else if (toolId === 25) damage = 4; // Stone Axe
+     else if (toolId === 22) damage = 2; // Wood Pick
+     else if (toolId === 23) damage = 3; // Stone Pick
 
      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
      const intersects = raycaster.intersectObjects(scene.children, true); // Recursive to hit mob parts
@@ -870,7 +910,7 @@ function performAttack() {
          }
 
          if (isMob && obj) {
-             obj.userData.mob.takeDamage(PUNCH_DAMAGE, controls.object.position);
+             obj.userData.mob.takeDamage(damage, controls.object.position);
              return; // Hit first mob and stop
          }
 
