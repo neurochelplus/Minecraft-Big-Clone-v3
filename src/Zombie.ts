@@ -74,6 +74,27 @@ export class Zombie extends Mob {
       this.rightArm = this.createBox(0.2, 0.7, 0.2, skinColor, -0.35, texture);
       this.rightArmGroup.add(this.rightArm);
 
+      // Fix UVs to only use the "Noise" part of atlas (0 - 0.333)
+      const fixUVs = (mesh: THREE.Mesh) => {
+          const uvAttr = mesh.geometry.getAttribute('uv');
+          if (!uvAttr) return;
+          
+          for (let i = 0; i < uvAttr.count; i++) {
+              let u = uvAttr.getX(i);
+              // Map 0..1 to 0..0.333
+              u = u * 0.333;
+              uvAttr.setX(i, u);
+          }
+          uvAttr.needsUpdate = true;
+      };
+
+      fixUVs(this.leftLeg);
+      fixUVs(this.rightLeg);
+      fixUVs(this.body);
+      fixUVs(this.head);
+      fixUVs(this.leftArm);
+      fixUVs(this.rightArm);
+
       // Initial Pose
       this.leftArmGroup.rotation.x = -Math.PI / 2;
       this.rightArmGroup.rotation.x = -Math.PI / 2;

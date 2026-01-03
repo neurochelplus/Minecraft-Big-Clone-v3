@@ -406,17 +406,29 @@ export class World {
     data[index] = type;
     this.dirtyChunks.add(key); // Mark for save
 
-    // Regenerate mesh
-    const chunk = this.chunks.get(key);
-    if (chunk) {
-        this.scene.remove(chunk.mesh);
-        chunk.mesh.geometry.dispose();
-        (chunk.mesh.material as THREE.Material).dispose();
-    }
+    // Regenerate mesh for CURRENT chunk
+    const updateChunkMesh = (k: string, cx: number, cz: number) => {
+        const chunk = this.chunks.get(k);
+        if (chunk) {
+            this.scene.remove(chunk.mesh);
+            chunk.mesh.geometry.dispose();
+            (chunk.mesh.material as THREE.Material).dispose();
+        }
+        const chunkData = this.chunksData.get(k);
+        if (chunkData) {
+            const newMesh = this.generateChunkMesh(chunkData, cx, cz);
+            this.scene.add(newMesh);
+            this.chunks.set(k, { mesh: newMesh });
+        }
+    };
 
-    const newMesh = this.generateChunkMesh(data, cx, cz);
-    this.scene.add(newMesh);
-    this.chunks.set(key, { mesh: newMesh });
+    updateChunkMesh(key, cx, cz);
+
+    // Regenerate Neighbors if on border
+    if (localX === 0) updateChunkMesh(`${cx-1},${cz}`, cx-1, cz);
+    if (localX === this.chunkSize - 1) updateChunkMesh(`${cx+1},${cz}`, cx+1, cz);
+    if (localZ === 0) updateChunkMesh(`${cx},${cz-1}`, cx, cz-1);
+    if (localZ === this.chunkSize - 1) updateChunkMesh(`${cx},${cz+1}`, cx, cz+1);
   }
 
   private getBlockIndex(x: number, y: number, z: number): number {

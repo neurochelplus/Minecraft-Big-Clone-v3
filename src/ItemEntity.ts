@@ -44,6 +44,27 @@ export class ItemEntity {
     
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
+    // UV Fix
+    const uvAttr = geometry.getAttribute('uv');
+    if (uvAttr) {
+         let uMin = 0;
+         let uMax = 0.333;
+
+         if (type === 6) { // Leaves
+             uMin = 0.333;
+             uMax = 0.666;
+         } else if (type === 7) { // Planks
+             uMin = 0.666;
+             uMax = 1.0;
+         }
+
+         for(let i=0; i<uvAttr.count; i++) {
+             const u = uvAttr.getX(i);
+             uvAttr.setX(i, uMin + u * (uMax - uMin));
+         }
+         uvAttr.needsUpdate = true;
+    }
+
     const material = new THREE.MeshStandardMaterial({ 
       map: texture,
       vertexColors: true,
