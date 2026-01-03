@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { World } from './World';
+import { World, BLOCK } from './World';
 import { ItemEntity } from './ItemEntity';
 import { MobManager } from './MobManager';
 import './style.css';
@@ -42,8 +42,8 @@ controls.addEventListener('lock', () => {
 });
 
 controls.addEventListener('unlock', () => {
-  // If we unlocked and we are not in inventory or already paused (via menu), then auto-pause
-  if (!isInventoryOpen && !isPaused && isGameStarted) {
+  // If we unlocked and we are not in inventory or already paused (via menu) or in CLI, then auto-pause
+  if (!isInventoryOpen && !isPaused && isGameStarted && !isCliOpen) {
     showPauseMenu();
   }
 });
@@ -64,7 +64,19 @@ const JUMP_IMPULSE = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 const velocity = new THREE.Vector3();
 
 const onKeyDown = (event: KeyboardEvent) => {
+  if (isCliOpen) return; // Ignore game keys when typing
+  
   switch (event.code) {
+    case 'Slash':
+        event.preventDefault();
+        toggleCLI(true, '/');
+        break;
+    case 'KeyT':
+        if (!isPaused && isGameStarted && !isInventoryOpen) {
+             event.preventDefault();
+             toggleCLI(true, '');
+        }
+        break;
     case 'ArrowUp':
     case 'KeyW':
       moveForward = true;
@@ -133,7 +145,9 @@ const BLOCK_NAMES: Record<number, string> = {
   3: 'Камень',
   4: 'Бедрок',
   5: 'Дерево',
-  6: 'Листва'
+  6: 'Листва',
+  7: 'Доски',
+  8: 'Палка'
 };
 
 // Inventory State
@@ -155,6 +169,124 @@ const hotbarLabel = document.getElementById('hotbar-label')!;
 
 let hotbarLabelTimeout: number;
 
+// CLI Elements
+let isCliOpen = false;
+const cliContainer = document.createElement('div');
+cliContainer.id = 'cli-container';
+const cliInput = document.createElement('input');
+cliInput.id = 'cli-input';
+cliInput.type = 'text';
+cliInput.autocomplete = 'off';
+cliContainer.appendChild(cliInput);
+document.body.appendChild(cliContainer);
+
+function toggleCLI(open: boolean, initialChar: string = '') {
+    if (open) {
+        if (!isGameStarted) return; // Don't open in menus
+        isCliOpen = true;
+        cliContainer.style.display = 'flex';
+        cliInput.value = initialChar;
+        cliInput.focus();
+        controls.unlock();
+        // Clear move flags to stop walking when typing
+        moveForward = false;
+        moveBackward = false;
+        moveLeft = false;
+        moveRight = false;
+    } else {
+        isCliOpen = false;
+        cliContainer.style.display = 'none';
+        cliInput.value = '';
+        cliInput.blur();
+        if (!isInventoryOpen && !isPaused) controls.lock();
+    }
+}
+
+function handleCommand(cmd: string) {
+    if (!cmd.startsWith('/')) return;
+    
+    const parts = cmd.slice(1).split(' ');
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    if (command === 'give') {
+        if (args.length < 1) {
+            console.log("Usage: /give <item> [amount]");
+            showHotbarLabel("Usage: /give <item> [amount]");
+            return;
+        }
+
+        const itemName = args[0].toLowerCase();
+        const amount = parseInt(args[1]) || 1;
+        
+        // Find block ID by name
+        let targetId = 0;
+        // Simple search in BLOCK_NAMES (localized) or hardcoded map
+        // Let's make a simple English mapping for CLI
+        const ITEM_MAP: Record<string, number> = {
+            'grass': 1,
+            'dirt': 2,
+            'stone': 3,
+            'bedrock': 4,
+            'wood': 5,
+            'leaves': 6,
+            'planks': 7,
+            'stick': 8
+        };
+
+        if (ITEM_MAP[itemName]) {
+            targetId = ITEM_MAP[itemName];
+        } else {
+            // Try to find in BLOCK_NAMES (reverse lookup?)
+            // For now just numeric ID support too
+            const numericId = parseInt(itemName);
+            if (!isNaN(numericId) && BLOCK_NAMES[numericId]) {
+                targetId = numericId;
+            }
+        }
+
+        if (targetId !== 0) {
+            // Add to inventory
+            addItemToInventory(targetId, amount);
+            showHotbarLabel(`Gave ${amount} ${BLOCK_NAMES[targetId]}`);
+        } else {
+            showHotbarLabel(`Unknown item: ${itemName}`);
+        }
+    }
+}
+
+function addItemToInventory(id: number, count: number) {
+    // 1. Try to stack
+    for(let i=0; i<36; i++) {
+        if (inventorySlots[i].id === id) {
+            inventorySlots[i].count += count;
+            refreshInventoryUI();
+            return;
+        }
+    }
+    // 2. Empty slot
+    for(let i=0; i<36; i++) {
+        if (inventorySlots[i].id === 0) {
+            inventorySlots[i].id = id;
+            inventorySlots[i].count = count;
+            refreshInventoryUI();
+            return;
+        }
+    }
+    showHotbarLabel("Inventory full!");
+}
+
+cliInput.addEventListener('keydown', (e) => {
+    e.stopPropagation(); // Stop game controls from triggering
+    if (e.key === 'Enter') {
+        const cmd = cliInput.value.trim();
+        if (cmd) handleCommand(cmd);
+        toggleCLI(false);
+    } else if (e.key === 'Escape') {
+        toggleCLI(false);
+    }
+});
+
 // Generate CSS Noise
 const canvas = document.createElement('canvas');
 canvas.width = 64;
@@ -175,6 +307,8 @@ function getBlockColor(id: number) {
   if (id === 3) return '#808080';
   if (id === 5) return '#654321';
   if (id === 6) return '#228B22';
+  if (id === 7) return '#C29A6B';
+  if (id === 8) return '#654321';
   return '#fff';
 }
 
@@ -739,6 +873,9 @@ function performInteract() {
       // Place Block
       const slot = inventorySlots[selectedSlot];
       if (slot.id !== 0 && slot.count > 0) {
+        // Prevent placing non-blocks (e.g. Stick)
+        if (slot.id === BLOCK.STICK) return;
+
         if (hit.face) {
           const p = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
           const x = Math.floor(p.x);

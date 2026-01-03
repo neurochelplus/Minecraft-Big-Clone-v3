@@ -10,7 +10,9 @@ export const BLOCK = {
   STONE: 3,
   BEDROCK: 4,
   WOOD: 5,
-  LEAVES: 6
+  LEAVES: 6,
+  PLANKS: 7,
+  STICK: 8
 };
 
 type Chunk = {
@@ -535,6 +537,8 @@ export class World {
       }
       else if (type === BLOCK.WOOD) { r=0.4; g=0.2; b=0.0; } // Dark Brown
       else if (type === BLOCK.LEAVES) { r=0.13; g=0.55; b=0.13; } // Forest Green
+      else if (type === BLOCK.PLANKS) { r=0.76; g=0.60; b=0.42; } // Light Wood
+      else if (type === BLOCK.STICK) { r=0.4; g=0.2; b=0.0; } // Stick color (if ever placed)
 
       // Append data based on side
       if (side === 'top') {
