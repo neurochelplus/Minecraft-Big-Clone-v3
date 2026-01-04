@@ -143,12 +143,82 @@ canvas {
   flex-direction: column;
   align-items: center;
 }
+
+#crafting-area {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+}
+
+#crafting-grid-container {
+    display: grid;
+    /* Defaults to 2x2 */
+    grid-template-columns: repeat(2, 40px);
+    grid-template-rows: repeat(2, 40px);
+    gap: 4px;
+}
+
+#crafting-grid-container.grid-3x3 {
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 40px);
+}
+
+.crafting-arrow {
+    font-size: 24px;
+    color: #aaa;
+}
+
+#crafting-result-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 #inventory-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 4px;
   margin-top: 10px;
 }
+
+/* Mobile Crafting List */
+#mobile-crafting-list {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.craft-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #444;
+    border: 1px solid #777;
+    padding: 5px;
+    color: white;
+    cursor: pointer;
+    font-family: monospace;
+}
+
+.craft-btn:active {
+    background: #666;
+}
+
+.craft-btn .block-icon {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    background-color: rgba(0,0,0,0.3);
+}
+
 .slot-hotbar-separator {
   margin-top: 15px; 
 }

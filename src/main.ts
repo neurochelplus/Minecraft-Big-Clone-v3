@@ -4,6 +4,8 @@ import { World, BLOCK } from './World';
 import { ItemEntity } from './ItemEntity';
 import { TOOL_DEFS, generateToolTexture } from './ToolTextures';
 import type { GeneratedTexture } from './ToolTextures';
+import { RECIPES } from './Recipes';
+import type { Recipe } from './Recipes';
 import { MobManager } from './MobManager';
 import './style.css';
 
@@ -137,7 +139,7 @@ const onKeyDown = (event: KeyboardEvent) => {
       }
       break;
     case 'KeyE':
-      if (!isPaused) toggleInventory();
+      if (!isPaused) toggleInventory(false);
       break;
     case 'Escape':
       if (isInventoryOpen) toggleInventory();
@@ -185,6 +187,7 @@ const BLOCK_NAMES: Record<number, string> = {
   6: 'Листва',
   7: 'Доски',
   8: 'Палка',
+  9: 'Верстак',
   20: 'Деревянный меч',
   21: 'Каменный меч',
   22: 'Деревянная кирка',
@@ -224,6 +227,11 @@ cliInput.type = 'text';
 cliInput.autocomplete = 'off';
 cliContainer.appendChild(cliInput);
 document.body.appendChild(cliContainer);
+
+// Disable context menu for right-click splitting
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+});
 
 function toggleCLI(open: boolean, initialChar: string = '') {
     if (open) {
@@ -277,6 +285,7 @@ function handleCommand(cmd: string) {
             'leaves': 6,
             'planks': 7,
             'stick': 8,
+            'crafting_table': 9,
             'wooden_sword': 20,
             'stone_sword': 21,
             'wooden_pickaxe': 22,
@@ -362,6 +371,7 @@ function getBlockColor(id: number) {
   if (id === 6) return '#228B22';
   if (id === 7) return '#C29A6B';
   if (id === 8) return '#654321';
+  if (id === 9) return '#a05a2b'; // Crafting Table
   if (id >= 20) return 'transparent';
   return '#fff';
 }
@@ -412,7 +422,7 @@ function initSlotElement(index: number, isHotbar: boolean) {
   div.addEventListener('mousedown', (e) => {
     e.stopPropagation();
     if (isInventoryOpen) {
-      handleSlotClick(index);
+      handleSlotClick(index, e.button);
     }
   });
   
@@ -469,6 +479,10 @@ function updateSlotVisuals(index: number) {
         } else if (slot.id === 7) { // Planks
              icon.classList.add('item-planks');
              icon.style.backgroundColor = getBlockColor(slot.id);
+        } else if (slot.id === 9) { // Crafting Table
+             icon.style.backgroundColor = getBlockColor(slot.id);
+             // Could add special class for pattern
+             icon.style.backgroundImage = 'var(--noise-url)';
         } else {
              icon.style.backgroundColor = getBlockColor(slot.id);
              icon.style.backgroundImage = 'var(--noise-url)'; // Restore noise for blocks
@@ -481,6 +495,490 @@ function updateSlotVisuals(index: number) {
       }
   });
 }
+
+// --- Crafting System ---
+let isCraftingOpen = false;
+let isCraftingTable = false; // 2x2 or 3x3
+const craftingSlots = Array.from({ length: 9 }, () => ({ id: 0, count: 0 }));
+const craftingResult = { id: 0, count: 0 };
+
+const craftingArea = document.createElement('div');
+craftingArea.id = 'crafting-area';
+// Build Crafting UI structure
+// [ Grid ] -> [ Result ]
+
+const craftGridContainer = document.createElement('div');
+craftGridContainer.id = 'crafting-grid-container';
+craftingArea.appendChild(craftGridContainer);
+
+const arrowDiv = document.createElement('div');
+arrowDiv.className = 'crafting-arrow';
+arrowDiv.innerText = '→';
+craftingArea.appendChild(arrowDiv);
+
+const resultContainer = document.createElement('div');
+resultContainer.id = 'crafting-result-container';
+const resultSlotDiv = document.createElement('div'); // Will be init via initSlotElement
+// We need custom logic for result slot because it's not part of standard inventorySlots array
+resultSlotDiv.classList.add('slot');
+resultSlotDiv.id = 'slot-result';
+const resultIcon = document.createElement('div');
+resultIcon.className = 'block-icon';
+resultIcon.style.display = 'none';
+const resultCount = document.createElement('div');
+resultCount.className = 'slot-count';
+resultSlotDiv.appendChild(resultIcon);
+resultSlotDiv.appendChild(resultCount);
+
+resultSlotDiv.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    handleResultClick();
+});
+resultSlotDiv.addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    handleResultClick();
+});
+
+resultContainer.appendChild(resultSlotDiv);
+craftingArea.appendChild(resultContainer);
+
+// Mobile List
+const mobileCraftingList = document.createElement('div');
+mobileCraftingList.id = 'mobile-crafting-list';
+
+function initCraftingUI() {
+    // Insert into menu
+    inventoryMenu.insertBefore(craftingArea, inventoryGrid);
+    if (isMobile) {
+        inventoryMenu.insertBefore(mobileCraftingList, inventoryGrid);
+    }
+}
+
+// Call once
+initCraftingUI();
+
+function updateCraftingGridSize() {
+    craftGridContainer.innerHTML = '';
+    const size = isCraftingTable ? 3 : 2;
+    const total = size * size;
+
+    if (isCraftingTable) {
+        craftGridContainer.classList.add('grid-3x3');
+    } else {
+        craftGridContainer.classList.remove('grid-3x3');
+    }
+
+    for (let i = 0; i < total; i++) {
+        // Map 2x2 indices to 0,1,3,4 of 9-slot array or just use 0-3? 
+        // Let's use 0-8 linearly. 
+        // For 2x2, we use indices 0,1,2,3 of craftingSlots.
+        
+        const div = document.createElement('div');
+        div.classList.add('slot');
+        div.setAttribute('data-craft-index', i.toString());
+        
+        const icon = document.createElement('div');
+        icon.classList.add('block-icon');
+        icon.style.display = 'none';
+        div.appendChild(icon);
+
+        const countEl = document.createElement('div');
+        countEl.classList.add('slot-count');
+        div.appendChild(countEl);
+
+        // Events
+        const handleCraftSlot = (btn: number = 0) => {
+             handleCraftSlotClick(i, btn);
+        };
+
+        div.addEventListener('mousedown', (e) => { e.stopPropagation(); handleCraftSlot(e.button); });
+        div.addEventListener('touchstart', (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); handleCraftSlot(); });
+
+        craftGridContainer.appendChild(div);
+    }
+}
+
+function updateCraftingVisuals() {
+    if (isMobile) {
+        updateMobileCraftingList();
+        return; // Desktop grid hidden on mobile usually? Or user wants separate UI.
+                // User said "mobile needs list", implying grid is bad.
+                // We'll hide grid on mobile via CSS or JS.
+    }
+
+    const size = isCraftingTable ? 3 : 2;
+    const total = size * size;
+    
+    // Update Grid
+    const slots = craftGridContainer.children;
+    for(let i=0; i<total; i++) {
+        const slot = craftingSlots[i];
+        const el = slots[i] as HTMLElement;
+        const icon = el.querySelector('.block-icon') as HTMLElement;
+        const countEl = el.querySelector('.slot-count') as HTMLElement;
+
+        if (slot.id !== 0 && slot.count > 0) {
+            icon.style.display = 'block';
+            
+            // Cleanup classes
+            icon.classList.remove('item-stick', 'item-planks', 'item-tool');
+            icon.style.backgroundImage = '';
+            
+            if (TOOL_TEXTURES[slot.id]) {
+                icon.classList.add('item-tool');
+                icon.style.backgroundImage = `url(${TOOL_TEXTURES[slot.id].dataUrl})`;
+            } else if (slot.id === 7) {
+                icon.classList.add('item-planks');
+                icon.style.backgroundColor = getBlockColor(slot.id);
+            } else if (slot.id === 9) {
+                 icon.style.backgroundColor = getBlockColor(slot.id);
+            } else {
+                icon.style.backgroundColor = getBlockColor(slot.id);
+                icon.style.backgroundImage = 'var(--noise-url)';
+            }
+            
+            countEl.innerText = slot.count.toString();
+        } else {
+            icon.style.display = 'none';
+            countEl.innerText = '';
+        }
+    }
+
+    // Update Result
+    if (craftingResult.id !== 0) {
+        resultIcon.style.display = 'block';
+        
+        // Cleanup classes
+        resultIcon.classList.remove('item-stick', 'item-planks', 'item-tool');
+        resultIcon.style.backgroundImage = '';
+
+        if (TOOL_TEXTURES[craftingResult.id]) {
+            resultIcon.classList.add('item-tool');
+            resultIcon.style.backgroundImage = `url(${TOOL_TEXTURES[craftingResult.id].dataUrl})`;
+        } else if (craftingResult.id === 7) {
+            resultIcon.classList.add('item-planks');
+            resultIcon.style.backgroundColor = getBlockColor(craftingResult.id);
+        } else if (craftingResult.id === 9) {
+            resultIcon.style.backgroundColor = getBlockColor(craftingResult.id);
+        } else {
+            resultIcon.style.backgroundColor = getBlockColor(craftingResult.id);
+            resultIcon.style.backgroundImage = 'var(--noise-url)';
+        }
+
+        resultCount.innerText = craftingResult.count.toString();
+    } else {
+        resultIcon.style.display = 'none';
+        resultCount.innerText = '';
+    }
+}
+
+function checkRecipes() {
+    // Convert current grid to a standardized "shape"
+    // 1. Find bounds
+    const size = isCraftingTable ? 3 : 2;
+    let minX = size, minY = size, maxX = -1, maxY = -1;
+    
+    // Check if empty
+    let isEmpty = true;
+
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const index = y * size + x;
+            if (craftingSlots[index].id !== 0) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                isEmpty = false;
+            }
+        }
+    }
+
+    if (isEmpty) {
+        craftingResult.id = 0;
+        craftingResult.count = 0;
+        updateCraftingVisuals();
+        return;
+    }
+
+    // 2. Extract relative pattern
+    const patternWidth = maxX - minX + 1;
+    const patternHeight = maxY - minY + 1;
+    
+    // Match against recipes
+    for (const recipe of RECIPES) {
+        // A. Shapeless (Simple ingredient count check)
+        if (recipe.ingredients) {
+            // Check if grid has exactly these ingredients
+            // Copy ingredients to temp map
+            const needed = [...recipe.ingredients];
+            let match = true;
+            let usedCount = 0;
+            
+            // Count total items in grid
+            let gridItemCount = 0;
+            for(let i=0; i<size*size; i++) if (craftingSlots[i].id !== 0) gridItemCount++;
+
+            // For each item in grid, try to find in needed list
+            for (let i=0; i<size*size; i++) {
+                const slot = craftingSlots[i];
+                if (slot.id === 0) continue;
+                
+                const foundIdx = needed.findIndex(n => n.id === slot.id && n.count > 0); // Assuming 1 per slot for now? 
+                // Recipe definition "ingredients" assumes 1 unit per slot usually
+                // But my def has 'count'.
+                // Standard MC shapeless: List of items required.
+                
+                if (foundIdx !== -1) {
+                    needed.splice(foundIdx, 1);
+                } else {
+                    match = false;
+                    break;
+                }
+            }
+            
+            if (match && needed.length === 0) {
+                 craftingResult.id = recipe.result.id;
+                 craftingResult.count = recipe.result.count;
+                 updateCraftingVisuals();
+                 return;
+            }
+        }
+        
+        // B. Shaped
+        if (recipe.pattern && recipe.keys) {
+            if (recipe.pattern[0].length !== patternWidth || recipe.pattern.length !== patternHeight) {
+                continue; // Size mismatch
+            }
+
+            let match = true;
+            for (let y = 0; y < patternHeight; y++) {
+                for (let x = 0; x < patternWidth; x++) {
+                    const rowStr = recipe.pattern[y];
+                    const keyChar = rowStr[x];
+                    const expectedId = keyChar === ' ' ? 0 : recipe.keys[keyChar];
+                    
+                    // Grid pos
+                    const gx = minX + x;
+                    const gy = minY + y;
+                    const gIndex = gy * size + gx;
+                    
+                    if (craftingSlots[gIndex].id !== expectedId) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (!match) break;
+            }
+
+            if (match) {
+                craftingResult.id = recipe.result.id;
+                craftingResult.count = recipe.result.count;
+                updateCraftingVisuals();
+                return;
+            }
+        }
+    }
+
+    // No match
+    craftingResult.id = 0;
+    craftingResult.count = 0;
+    updateCraftingVisuals();
+}
+
+function handleCraftSlotClick(index: number, button: number = 0) {
+    const slot = craftingSlots[index];
+
+    if (!draggedItem) {
+        if (slot.id !== 0) {
+            if (button === 2) {
+                // Right Click: Split
+                const half = Math.ceil(slot.count / 2);
+                draggedItem = { id: slot.id, count: half };
+                slot.count -= half;
+                if (slot.count === 0) slot.id = 0;
+            } else {
+                // Pickup All
+                draggedItem = { ...slot };
+                slot.id = 0;
+                slot.count = 0;
+            }
+            checkRecipes();
+        }
+    } else {
+        if (slot.id === 0) {
+            if (button === 2) {
+                // Place One
+                slot.id = draggedItem.id;
+                slot.count = 1;
+                draggedItem.count--;
+                if (draggedItem.count === 0) draggedItem = null;
+            } else {
+                // Place All
+                slot.id = draggedItem.id;
+                slot.count = draggedItem.count;
+                draggedItem = null;
+            }
+            checkRecipes();
+        } else if (slot.id === draggedItem.id) {
+            if (button === 2) {
+                 // Add One
+                 slot.count++;
+                 draggedItem.count--;
+                 if (draggedItem.count === 0) draggedItem = null;
+            } else {
+                 // Add All
+                 slot.count += draggedItem.count;
+                 draggedItem = null;
+            }
+            checkRecipes();
+        } else {
+            // Swap
+            const temp = { ...slot };
+            slot.id = draggedItem.id;
+            slot.count = draggedItem.count;
+            draggedItem = temp;
+            checkRecipes();
+        }
+    }
+    updateCraftingVisuals();
+    updateDragIcon();
+}
+
+function handleResultClick() {
+    if (craftingResult.id === 0) return;
+
+    // Check if we can pick it up
+    if (!draggedItem) {
+        draggedItem = { ...craftingResult };
+        consumeIngredients();
+    } else if (draggedItem.id === craftingResult.id) {
+        draggedItem.count += craftingResult.count;
+        consumeIngredients();
+    }
+    
+    updateDragIcon();
+    // checkRecipes is called inside consumeIngredients
+}
+
+function consumeIngredients() {
+    const size = isCraftingTable ? 3 : 2;
+    for (let i = 0; i < size * size; i++) {
+        if (craftingSlots[i].id !== 0) {
+            craftingSlots[i].count--;
+            if (craftingSlots[i].count <= 0) {
+                craftingSlots[i].id = 0;
+                craftingSlots[i].count = 0;
+            }
+        }
+    }
+    checkRecipes();
+}
+
+
+// Mobile Crafting Logic
+function updateMobileCraftingList() {
+    mobileCraftingList.innerHTML = '';
+    
+    // Find all recipes that can be crafted from INVENTORY
+    // Just a simple "can craft" check?
+    // User wants a LIST of available items. 
+    // Showing all recipes is safer, highlighting avail ones.
+    
+    // For simplicity, let's just show all RECIPES.
+    
+    RECIPES.forEach((recipe, idx) => {
+        // Calculate max craftable
+        // 1. Tally Inventory
+        const invMap = new Map<number, number>();
+        inventorySlots.forEach(s => {
+            if (s.id !== 0) invMap.set(s.id, (invMap.get(s.id)||0) + s.count);
+        });
+
+        // 2. Tally Recipe Requirements
+        const reqMap = new Map<number, number>();
+        if (recipe.ingredients) {
+            recipe.ingredients.forEach(i => reqMap.set(i.id, (reqMap.get(i.id)||0) + i.count));
+        } else if (recipe.pattern && recipe.keys) {
+             for(const row of recipe.pattern) {
+                 for(const char of row) {
+                     if (char !== ' ') {
+                         const id = recipe.keys[char];
+                         reqMap.set(id, (reqMap.get(id)||0) + 1);
+                     }
+                 }
+             }
+        }
+
+        // 3. Check sufficiency
+        let canCraft = true;
+        let maxCrafts = 999;
+
+        for(const [reqId, reqCount] of reqMap) {
+            const has = invMap.get(reqId) || 0;
+            if (has < reqCount) {
+                canCraft = false;
+                maxCrafts = 0;
+                break;
+            } else {
+                maxCrafts = Math.min(maxCrafts, Math.floor(has / reqCount));
+            }
+        }
+
+        if (!canCraft) return; // Hide uncraftable? Or show disabled. "List of available for craft" implies filter.
+
+        const btn = document.createElement('div');
+        btn.className = 'craft-btn';
+        
+        const icon = document.createElement('div');
+        icon.className = 'block-icon';
+        const rId = recipe.result.id;
+        
+        // Icon logic copy
+        if (TOOL_TEXTURES[rId]) {
+            icon.classList.add('item-tool');
+            icon.style.backgroundImage = `url(${TOOL_TEXTURES[rId].dataUrl})`;
+        } else if (rId === 7) {
+            icon.classList.add('item-planks');
+            icon.style.backgroundColor = getBlockColor(rId);
+        } else if (rId === 9) {
+             icon.style.backgroundColor = getBlockColor(rId);
+        } else {
+            icon.style.backgroundColor = getBlockColor(rId);
+            icon.style.backgroundImage = 'var(--noise-url)';
+        }
+        
+        btn.appendChild(icon);
+        
+        const name = document.createElement('span');
+        name.innerText = `${BLOCK_NAMES[rId]} x${recipe.result.count}`;
+        btn.appendChild(name);
+        
+        btn.onclick = () => {
+             // Consume from inventory
+             for(const [reqId, reqCount] of reqMap) {
+                 let remaining = reqCount;
+                 for(let i=0; i<36; i++) {
+                     if (inventorySlots[i].id === reqId) {
+                         const take = Math.min(remaining, inventorySlots[i].count);
+                         inventorySlots[i].count -= take;
+                         remaining -= take;
+                         if (inventorySlots[i].count === 0) inventorySlots[i].id = 0;
+                         if (remaining <= 0) break;
+                     }
+                 }
+             }
+             
+             // Add result
+             addItemToInventory(recipe.result.id, recipe.result.count);
+             refreshInventoryUI(); // Updates list too
+        };
+        
+        mobileCraftingList.appendChild(btn);
+    });
+}
+
 
 function initInventoryUI() {
   hotbarContainer.innerHTML = '';
@@ -512,21 +1010,51 @@ function refreshInventoryUI() {
     for(let i=0; i<36; i++) {
         updateSlotVisuals(i);
     }
+    if (isInventoryOpen) updateCraftingVisuals();
 }
 
-function toggleInventory() {
+function toggleInventory(useCraftingTable = false) {
   isInventoryOpen = !isInventoryOpen;
   
   if (isInventoryOpen) {
     controls.unlock();
     inventoryMenu.style.display = 'flex';
+    
+    // Set Mode
+    isCraftingTable = useCraftingTable;
+    craftingArea.style.display = isMobile ? 'none' : 'flex'; // Hide grid on mobile
+    mobileCraftingList.style.display = isMobile ? 'flex' : 'none';
+    
+    updateCraftingGridSize();
+    
+    // Clear crafting slots when opening/closing?
+    // MC keeps items in crafting table but throws them out if you close 2x2.
+    // Simplification: Return items to inventory on close.
+    
     refreshInventoryUI();
+    updateCraftingVisuals();
+    
   } else {
     // Auto-save on close
     world.saveWorld({
         position: controls.object.position,
         inventory: inventorySlots
     });
+
+    // Return crafting items to inventory
+    const size = isCraftingTable ? 3 : 2; // Actually we might have switched modes, but assuming we close what we opened.
+    // If we closed via 'E', it's possible we were in 3x3.
+    // Just clear all 9 slots to be safe.
+    for(let i=0; i<9; i++) {
+        if (craftingSlots[i].id !== 0) {
+            addItemToInventory(craftingSlots[i].id, craftingSlots[i].count);
+            craftingSlots[i].id = 0;
+            craftingSlots[i].count = 0;
+        }
+    }
+    craftingResult.id = 0;
+    craftingResult.count = 0;
+    // We already updated visuals in toggle, but UI is hidden now.
 
     controls.lock();
     inventoryMenu.style.display = 'none';
@@ -548,24 +1076,51 @@ function toggleInventory() {
   }
 }
 
-function handleSlotClick(index: number) {
+function handleSlotClick(index: number, button: number = 0) {
   const slot = inventorySlots[index];
 
   if (!draggedItem) {
     if (slot.id !== 0) {
-      draggedItem = { ...slot };
-      slot.id = 0;
-      slot.count = 0;
+        if (button === 2) {
+             // Right Click: Split
+             const half = Math.ceil(slot.count / 2);
+             draggedItem = { id: slot.id, count: half };
+             slot.count -= half;
+             if (slot.count === 0) slot.id = 0;
+        } else {
+             // Left Click: Pickup All
+             draggedItem = { ...slot };
+             slot.id = 0;
+             slot.count = 0;
+        }
     }
   } else {
     if (slot.id === 0) {
-      slot.id = draggedItem.id;
-      slot.count = draggedItem.count;
-      draggedItem = null;
+        if (button === 2) {
+            // Right Click: Place One
+            slot.id = draggedItem.id;
+            slot.count = 1;
+            draggedItem.count--;
+            if (draggedItem.count === 0) draggedItem = null;
+        } else {
+             // Left Click: Place All
+             slot.id = draggedItem.id;
+             slot.count = draggedItem.count;
+             draggedItem = null;
+        }
     } else if (slot.id === draggedItem.id) {
-      slot.count += draggedItem.count;
-      draggedItem = null;
+        if (button === 2) {
+            // Right Click: Add One
+            slot.count++;
+            draggedItem.count--;
+            if (draggedItem.count === 0) draggedItem = null;
+        } else {
+             // Left Click: Add All
+             slot.count += draggedItem.count;
+             draggedItem = null;
+        }
     } else {
+      // Swap (Left Click usually, RMB might fail or swap too)
       const temp = { ...slot };
       slot.id = draggedItem.id;
       slot.count = draggedItem.count;
@@ -591,6 +1146,8 @@ function updateDragIcon() {
         icon.style.backgroundImage = `url(${TOOL_TEXTURES[draggedItem.id].dataUrl})`;
     } else if (draggedItem.id === 7) {
         icon.classList.add('item-planks');
+        icon.style.backgroundColor = getBlockColor(draggedItem.id);
+    } else if (draggedItem.id === 9) {
         icon.style.backgroundColor = getBlockColor(draggedItem.id);
     } else {
         icon.style.backgroundColor = getBlockColor(draggedItem.id);
@@ -969,6 +1526,17 @@ function performInteract() {
   const hit = intersects.find(i => i.object !== cursorMesh && i.object !== crackMesh && i.object !== controls.object && (i.object as any).isMesh && !(i.object as any).isItem && !(i.object.parent as any)?.isMob);
 
   if (hit && hit.distance < 6) {
+      const p = hit.point.clone().add(raycaster.ray.direction.clone().multiplyScalar(0.01));
+      const x = Math.floor(p.x);
+      const y = Math.floor(p.y);
+      const z = Math.floor(p.z);
+
+      const targetId = world.getBlock(x, y, z);
+      if (targetId === BLOCK.CRAFTING_TABLE) {
+          toggleInventory(true); // Open 3x3
+          return;
+      }
+
       // Place Block
       const slot = inventorySlots[selectedSlot];
       if (slot.id !== 0 && slot.count > 0) {
@@ -1544,7 +2112,7 @@ if (isMobile) {
 
       e.preventDefault();
 
-      toggleInventory();
+      toggleInventory(false);
 
   });
 

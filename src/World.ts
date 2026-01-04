@@ -13,6 +13,7 @@ export const BLOCK = {
   LEAVES: 6,
   PLANKS: 7,
   STICK: 8,
+  CRAFTING_TABLE: 9,
   WOODEN_SWORD: 20,
   STONE_SWORD: 21,
   WOODEN_PICKAXE: 22,
@@ -197,7 +198,7 @@ export class World {
   // --- Core Logic ---
 
   private createNoiseTexture(): THREE.DataTexture {
-    const width = 48; // 16 * 3 (Noise, Leaves, Planks)
+    const width = 64; // 16 * 4 (Noise, Leaves, Planks, Crafting Table)
     const height = 16;
     const data = new Uint8Array(width * height * 4); // RGBA
 
@@ -218,21 +219,31 @@ export class World {
           if (Math.random() < 0.4) {
              data[stride + 3] = 0;
           }
-      } else if (x >= 32) {
+      } else if (x >= 32 && x < 48) {
           // Planks (Right 16)
           // Base: much smoother, brighter "wood"
-          // We overwrite the noisy 'v' with something calmer
-          const woodGrain = 230 + Math.random() * 20; // 230-250 (Light)
+          const woodGrain = 230 + Math.random() * 20; 
           data[stride] = woodGrain;
           data[stride + 1] = woodGrain;
           data[stride + 2] = woodGrain;
 
-          // Horizontal stripes every 4 pixels
-          // Make them 1 pixel thick and DARK for contrast
           if (y % 4 === 0) {
              data[stride] = 100;
              data[stride + 1] = 100;
              data[stride + 2] = 100;
+          }
+      } else if (x >= 48) {
+          // Crafting Table
+          // Wood color but darker/redder
+          data[stride] = 180;
+          data[stride + 1] = 120;
+          data[stride + 2] = 80;
+          
+          // Grid pattern
+          if (x % 5 === 0 || y % 5 === 0) {
+              data[stride] = 50;
+              data[stride + 1] = 30;
+              data[stride + 2] = 20;
           }
       }
     }
@@ -600,6 +611,7 @@ export class World {
       else if (type === BLOCK.WOOD) { r=0.4; g=0.2; b=0.0; } // Dark Brown
       else if (type === BLOCK.LEAVES) { r=0.13; g=0.55; b=0.13; } // Forest Green
       else if (type === BLOCK.PLANKS) { r=0.76; g=0.60; b=0.42; } // Light Wood
+      else if (type === BLOCK.CRAFTING_TABLE) { r=1.0; g=1.0; b=1.0; } // Texture handles color
       else if (type === BLOCK.STICK) { r=0.4; g=0.2; b=0.0; } // Stick
       else if (type >= 20) { r=1; g=0; b=1; } // Error/Tool color (Magenta)
 
@@ -632,18 +644,22 @@ export class World {
 
       // UVs 
       // Atlas: 
-      // 0.0 - 0.33: Solid (Noise)
-      // 0.33 - 0.66: Leaves (Transparent)
-      // 0.66 - 1.0: Planks (Striped)
+      // 0.0 - 0.25: Solid (Noise)
+      // 0.25 - 0.50: Leaves (Transparent)
+      // 0.50 - 0.75: Planks (Striped)
+      // 0.75 - 1.00: Crafting Table
       const uvInset = 0.001;
       let u0 = 0 + uvInset;
-      let u1 = 0.333 - uvInset;
+      let u1 = 0.25 - uvInset;
       
       if (type === BLOCK.LEAVES) {
-          u0 = 0.333 + uvInset;
-          u1 = 0.666 - uvInset;
+          u0 = 0.25 + uvInset;
+          u1 = 0.50 - uvInset;
       } else if (type === BLOCK.PLANKS) {
-          u0 = 0.666 + uvInset;
+          u0 = 0.50 + uvInset;
+          u1 = 0.75 - uvInset;
+      } else if (type === BLOCK.CRAFTING_TABLE) {
+          u0 = 0.75 + uvInset;
           u1 = 1.0 - uvInset;
       }
 
