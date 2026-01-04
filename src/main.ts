@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { World, BLOCK } from './World';
 import { ItemEntity } from './ItemEntity';
-import { TOOL_DEFS, generateToolTexture } from './ToolTextures';
+import { TOOL_DEFS, generateToolTexture, generateBlockIcon } from './ToolTextures';
+import { BLOCK_DEFS } from './BlockTextures';
 import type { GeneratedTexture } from './ToolTextures';
 import { RECIPES } from './Recipes';
 import type { Recipe } from './Recipes';
@@ -36,6 +37,14 @@ function initToolTextures() {
         TOOL_TEXTURES[BLOCK.WOODEN_SHOVEL] = generateToolTexture(TOOL_DEFS.WOODEN_SHOVEL.pattern, TOOL_DEFS.WOODEN_SHOVEL.color);
         TOOL_TEXTURES[BLOCK.STONE_SHOVEL] = generateToolTexture(TOOL_DEFS.STONE_SHOVEL.pattern, TOOL_DEFS.STONE_SHOVEL.color);
         
+        // Generate Crafting Table Icon
+        if (BLOCK_DEFS.CRAFTING_TABLE_TOP && BLOCK_DEFS.CRAFTING_TABLE_TOP.pattern && BLOCK_DEFS.CRAFTING_TABLE_TOP.colors) {
+            TOOL_TEXTURES[BLOCK.CRAFTING_TABLE] = generateBlockIcon(
+                BLOCK_DEFS.CRAFTING_TABLE_TOP.pattern, 
+                BLOCK_DEFS.CRAFTING_TABLE_TOP.colors
+            );
+        }
+
         console.log("Tool textures generated.");
     } catch (e) {
         console.error("Failed to generate tool textures:", e);
@@ -1312,12 +1321,18 @@ window.addEventListener('touchend', (e) => {
     const touch = e.changedTouches[0];
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     const slotEl = target?.closest('.slot');
+    
     if (slotEl) {
       const targetIndex = parseInt(slotEl.getAttribute('data-index') || '-1');
-      if (targetIndex !== -1 && targetIndex !== touchStartSlotIndex) {
+      // If dropped on a valid slot (even the same one), handle it
+      if (targetIndex !== -1) {
         handleSlotClick(targetIndex);
       }
+    } else {
+        // Dropped outside or invalid target - return to start slot
+        handleSlotClick(touchStartSlotIndex);
     }
+    
     touchStartSlotIndex = null;
   }
 });

@@ -65,20 +65,44 @@ export class ItemEntity {
         // UV Fix
         const uvAttr = geometry.getAttribute('uv');
         if (uvAttr) {
-             let uMin = 0;
-             let uMax = 0.333;
+             const uvStep = 1.0 / 6.0;
+             const uvInset = 0.001; // Avoid bleeding
 
-             if (type === 6) { // Leaves
-                 uMin = 0.333;
-                 uMax = 0.666;
-             } else if (type === 7) { // Planks
-                 uMin = 0.666;
-                 uMax = 1.0;
-             }
+             // Helper to get ranges
+             // 0: Noise (Default)
+             // 1: Leaves
+             // 2: Planks
+             // 3: CT Top
+             // 4: CT Side
+             // 5: CT Bottom
+             
+             const getRange = (idx: number) => {
+                 return { min: idx * uvStep + uvInset, max: (idx + 1) * uvStep - uvInset };
+             };
 
-             for(let i=0; i<uvAttr.count; i++) {
-                 const u = uvAttr.getX(i);
-                 uvAttr.setX(i, uMin + u * (uMax - uMin));
+             for (let face = 0; face < 6; face++) {
+                 // Determine texture index for this face
+                 // BoxGeometry Faces: 0:Right, 1:Left, 2:Top, 3:Bottom, 4:Front, 5:Back
+                 
+                 let texIdx = 0; // Default Noise/Stone/Dirt
+
+                 if (type === 6) texIdx = 1; // Leaves
+                 else if (type === 7) texIdx = 2; // Planks
+                 else if (type === 9) { // Crafting Table
+                     if (face === 2) texIdx = 3; // Top
+                     else if (face === 3) texIdx = 5; // Bottom
+                     else texIdx = 4; // Side
+                 }
+                 
+                 const { min, max } = getRange(texIdx);
+                 
+                 // Update 4 vertices for this face
+                 const offset = face * 4;
+                 for (let i = 0; i < 4; i++) {
+                     const u = uvAttr.getX(offset + i);
+                     // Remap 0..1 to min..max
+                     uvAttr.setX(offset + i, min + u * (max - min));
+                 }
              }
              uvAttr.needsUpdate = true;
         }

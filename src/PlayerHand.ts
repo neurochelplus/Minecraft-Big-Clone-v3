@@ -215,75 +215,52 @@ export class PlayerHand {
             this.currentMesh.scale.set(1.5, 1.5, 1.5); 
             this.currentMesh.position.set(0, 0.2, 0); 
         } else {
-            // Block (Unchanged)
+            // Block
+            const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
             
-            // UV Logic (Similar to ItemEntity/World)
-            // Atlas (Total slots: 6, step 1/6 = 0.16666...)
-            // 0: Noise, 1: Leaves, 2: Planks, 3: CT Top, 4: CT Side, 5: CT Bottom
+            // UV Logic
+            // Atlas: 6 Columns
             const uvStep = 1.0 / 6.0;
             const uvInset = 0.001;
             
-            // Default (Stone/Dirt/Grass Side/Noise)
-            let uTopStart = 0 + uvInset;
-            let uTopEnd = uvStep - uvInset;
-            let uSideStart = uTopStart;
-            let uSideEnd = uTopEnd;
-            let uBottomStart = uTopStart;
-            let uBottomEnd = uTopEnd;
-
-            if (id === BLOCK.LEAVES) {
-                uTopStart = uvStep * 1 + uvInset;
-                uTopEnd = uvStep * 2 - uvInset;
-                uSideStart = uTopStart; uSideEnd = uTopEnd; uBottomStart = uTopStart; uBottomEnd = uTopEnd;
-            } else if (id === BLOCK.PLANKS) {
-                uTopStart = uvStep * 2 + uvInset;
-                uTopEnd = uvStep * 3 - uvInset;
-                uSideStart = uTopStart; uSideEnd = uTopEnd; uBottomStart = uTopStart; uBottomEnd = uTopEnd;
-            } else if (id === BLOCK.CRAFTING_TABLE) {
-                // Top
-                uTopStart = uvStep * 3 + uvInset;
-                uTopEnd = uvStep * 4 - uvInset;
-                // Side
-                uSideStart = uvStep * 4 + uvInset;
-                uSideEnd = uvStep * 5 - uvInset;
-                // Bottom
-                uBottomStart = uvStep * 5 + uvInset;
-                uBottomEnd = uvStep * 6 - uvInset;
-            }
-
-            // Apply UVs
-            const uvAttr = geo.attributes.uv;
-            
-            const setFaceUV = (faceIdx: number, uStart: number, uEnd: number) => {
-                const offset = faceIdx * 4;
-                for (let i = 0; i < 4; i++) {
-                    const u = uvAttr.getX(offset + i);
-                    uvAttr.setX(offset + i, uStart + u * (uEnd - uStart));
-                }
+            const getRange = (idx: number) => {
+                 return { min: idx * uvStep + uvInset, max: (idx + 1) * uvStep - uvInset };
             };
 
-            // Faces: 0:Right, 1:Left, 2:Top, 3:Bottom, 4:Front, 5:Back
-            setFaceUV(0, uSideStart, uSideEnd); // Right
-            setFaceUV(1, uSideStart, uSideEnd); // Left
-            setFaceUV(2, uTopStart, uTopEnd);   // Top
-            setFaceUV(3, uBottomStart, uBottomEnd); // Bottom
-            setFaceUV(4, uSideStart, uSideEnd); // Front
-            setFaceUV(5, uSideStart, uSideEnd); // Back
+            const uvAttr = geo.attributes.uv;
             
+            // Faces: 0:Right, 1:Left, 2:Top, 3:Bottom, 4:Front, 5:Back
+            for (let face = 0; face < 6; face++) {
+                 let texIdx = 0; // Default Noise
+                 
+                 if (id === BLOCK.LEAVES) texIdx = 1;
+                 else if (id === BLOCK.PLANKS) texIdx = 2;
+                 else if (id === BLOCK.CRAFTING_TABLE) {
+                     if (face === 2) texIdx = 3; // Top
+                     else if (face === 3) texIdx = 5; // Bottom
+                     else texIdx = 4; // Side
+                 }
+                 
+                 const { min, max } = getRange(texIdx);
+                 const offset = face * 4;
+                 for (let i = 0; i < 4; i++) {
+                     const u = uvAttr.getX(offset + i);
+                     uvAttr.setX(offset + i, min + u * (max - min));
+                 }
+            }
             uvAttr.needsUpdate = true;
 
             // Colors
             let r=1, g=1, b=1;
-            // Copy World Logic roughly
             if (id === BLOCK.STONE) { r=0.5; g=0.5; b=0.5; }
             else if (id === BLOCK.BEDROCK) { r=0.05; g=0.05; b=0.05; }
             else if (id === BLOCK.DIRT) { r=0.54; g=0.27; b=0.07; }
-            else if (id === BLOCK.GRASS) { r=0.33; g=0.6; b=0.33; } // Simplification: All Green
+            else if (id === BLOCK.GRASS) { r=0.33; g=0.6; b=0.33; }
             else if (id === BLOCK.WOOD) { r=0.4; g=0.2; b=0.0; }
             else if (id === BLOCK.LEAVES) { r=0.13; g=0.55; b=0.13; }
             else if (id === BLOCK.PLANKS) { r=0.76; g=0.60; b=0.42; }
-            else if (id === BLOCK.CRAFTING_TABLE) { r=1; g=1; b=1; }
             else if (id === BLOCK.STICK) { r=0.4; g=0.2; b=0.0; }
+            // Crafting Table uses white (texture colors)
 
             const colors: number[] = [];
             for (let i = 0; i < 24; i++) colors.push(r, g, b);
@@ -298,6 +275,7 @@ export class PlayerHand {
             this.currentMesh = new THREE.Mesh(geo, mat);
             // Block Orientation
             this.currentMesh.rotation.y = Math.PI / 4;
+            this.currentMesh.position.set(0, 0, 0); // Centered
         }
 
         this.handGroup.add(this.currentMesh);

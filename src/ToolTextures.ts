@@ -155,6 +155,43 @@ export function generateToolTexture(pattern: string[], materialColor: string): G
     return { texture, dataUrl };
 }
 
+export function generateBlockIcon(pattern: string[], colors: { primary: string, secondary: string }): GeneratedTexture {
+    const size = 16; 
+    const scale = 1;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = size * scale;
+    canvas.height = size * scale;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.imageSmoothingEnabled = false;
+
+    for (let y = 0; y < size; y++) {
+        const row = pattern[y];
+        for (let x = 0; x < size; x++) {
+            const pixel = row[x];
+            // 1: Primary, 2: Secondary
+            if (pixel === '1') {
+                ctx.fillStyle = colors.primary;
+                ctx.fillRect(x * scale, y * scale, scale, scale);
+            } else if (pixel === '2') {
+                ctx.fillStyle = colors.secondary;
+                ctx.fillRect(x * scale, y * scale, scale, scale);
+            }
+        }
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    const dataUrl = canvas.toDataURL();
+
+    return { texture, dataUrl };
+}
+
 // Pre-generate definitions
 export const TOOL_DEFS = {
     STICK: { pattern: STICK_PATTERN, color: COLORS.HANDLE }, // Stick is handle material
