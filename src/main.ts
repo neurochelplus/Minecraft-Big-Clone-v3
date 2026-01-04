@@ -1484,7 +1484,7 @@ function respawn() {
   isInvulnerable = false;
   
   // Teleport to spawn
-  controls.object.position.set(8, 20, 8);
+  controls.object.position.set(8, 40, 8);
   velocity.set(0, 0, 0);
   
   console.log("Respawned!");
@@ -1865,7 +1865,7 @@ function animate() {
     
     // Fallback for falling out of world
     if (controls.object.position.y < -50) {
-        controls.object.position.set(8, 20, 20);
+        controls.object.position.set(8, 40, 20);
         velocity.set(0, 0, 0);
     }
   }
@@ -2401,7 +2401,7 @@ async function startGame(loadSave: boolean) {
             // Reset player state
             playerHP = 20;
             updateHealthUI();
-            controls.object.position.set(8, 20, 20);
+            controls.object.position.set(8, 40, 20);
             velocity.set(0, 0, 0);
             // Clear inventory
             for(let i=0; i<36; i++) {
