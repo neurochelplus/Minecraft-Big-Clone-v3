@@ -55,16 +55,23 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // Sky blue
 scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
 
+// UI Scene (for Hand)
+const uiScene = new THREE.Scene();
+
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = 'YXZ';
 camera.position.set(8, 20, 20);
 camera.lookAt(8, 8, 8);
+
+const uiCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+uiScene.add(uiCamera);
 
 const renderer = new THREE.WebGLRenderer({ antialias: !isMobile }); // Disable AA on mobile for perf
 renderer.setSize(window.innerWidth, window.innerHeight);
 // Cap pixel ratio to prevent lag on high-DPI phones
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
 renderer.shadowMap.enabled = !isMobile; // Disable shadows by default on mobile
+renderer.autoClear = false; // Manual clearing for overlay
 document.body.appendChild(renderer.domElement);
 
 import { Environment } from './Environment';
@@ -177,7 +184,15 @@ document.addEventListener('keyup', onKeyUp);
 const world = new World(scene);
 const entities: ItemEntity[] = [];
 const mobManager = new MobManager(world, scene, entities);
-const playerHand = new PlayerHand(camera, world.noiseTexture, TOOL_TEXTURES);
+
+// UI Lighting
+const uiLight = new THREE.DirectionalLight(0xffffff, 1.5);
+uiLight.position.set(1, 1, 1);
+uiScene.add(uiLight);
+const uiAmbient = new THREE.AmbientLight(0xffffff, 0.5);
+uiScene.add(uiAmbient);
+
+const playerHand = new PlayerHand(uiCamera, world.noiseTexture, TOOL_TEXTURES);
 
 // Block Data
 const BLOCK_NAMES: Record<number, string> = {
@@ -1857,13 +1872,18 @@ function animate() {
 
   prevTime = time;
 
+  renderer.clear(); // Clear color & depth
   renderer.render(scene, camera);
+  renderer.clearDepth(); // Clear depth for UI overlay
+  renderer.render(uiScene, uiCamera);
 }
 
 // Window resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  uiCamera.aspect = window.innerWidth / window.innerHeight;
+  uiCamera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 

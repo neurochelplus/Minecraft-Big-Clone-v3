@@ -169,13 +169,17 @@ export class PlayerHand {
             vertexColors: true,
             roughness: 0.5,
             metalness: 0.1,
-            flatShading: true // CRITICAL: Ensures no smooth shading across sharp voxel edges
+            flatShading: true 
         });
 
         const mesh = new THREE.Mesh(geo, mat);
-        // Orientation: Rotated 180 (Math.PI) + 90 (PI/2) to point away
         mesh.rotation.y = Math.PI / 2; 
         
+        // Add Thin Wireframe Outline
+        const edges = new THREE.EdgesGeometry(geo);
+        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 }));
+        mesh.add(line);
+
         return mesh;
     }
 
@@ -205,11 +209,13 @@ export class PlayerHand {
             // Tool Orientation
             this.currentMesh.rotation.y = Math.PI / 2; // Point OUTWARD
             this.currentMesh.rotation.x = 0;
-            this.currentMesh.scale.set(1.5, 1.5, 1.5); // Make it bigger
-            this.currentMesh.position.set(0, 0.2, 0); // Adjust height
+            
+            // Axe Rotation Logic removed (standardized)
+
+            this.currentMesh.scale.set(1.5, 1.5, 1.5); 
+            this.currentMesh.position.set(0, 0.2, 0); 
         } else {
-            // Block
-            const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+            // Block (Unchanged)
             
             // UV Logic (Similar to ItemEntity/World)
             // Atlas (Total slots: 6, step 1/6 = 0.16666...)
