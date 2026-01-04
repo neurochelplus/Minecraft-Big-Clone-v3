@@ -18,7 +18,9 @@ export const BLOCK = {
   WOODEN_PICKAXE: 22,
   STONE_PICKAXE: 23,
   WOODEN_AXE: 24,
-  STONE_AXE: 25
+  STONE_AXE: 25,
+  WOODEN_SHOVEL: 26,
+  STONE_SHOVEL: 27
 };
 
 type Chunk = {
@@ -364,6 +366,13 @@ export class World {
     if (toolId === BLOCK.WOODEN_PICKAXE || toolId === BLOCK.STONE_PICKAXE) {
         if (blockType === BLOCK.STONE) {
              multiplier = (toolId === BLOCK.STONE_PICKAXE) ? 4 : 2;
+        }
+    }
+
+    // SHOVELS (Dirt, Grass)
+    if (toolId === BLOCK.WOODEN_SHOVEL || toolId === BLOCK.STONE_SHOVEL) {
+        if (blockType === BLOCK.DIRT || blockType === BLOCK.GRASS) {
+             multiplier = (toolId === BLOCK.STONE_SHOVEL) ? 4 : 2;
         }
     }
 

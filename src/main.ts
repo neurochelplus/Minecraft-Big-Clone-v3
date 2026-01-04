@@ -18,7 +18,8 @@ function initToolTextures() {
         }
         
         console.log("Generating tool textures...");
-        // TOOL_TEXTURES[BLOCK.STICK] -> Handled via CSS now
+        
+        TOOL_TEXTURES[BLOCK.STICK] = generateToolTexture(TOOL_DEFS.STICK.pattern, TOOL_DEFS.STICK.color);
         
         TOOL_TEXTURES[BLOCK.WOODEN_SWORD] = generateToolTexture(TOOL_DEFS.WOODEN_SWORD.pattern, TOOL_DEFS.WOODEN_SWORD.color);
         TOOL_TEXTURES[BLOCK.STONE_SWORD] = generateToolTexture(TOOL_DEFS.STONE_SWORD.pattern, TOOL_DEFS.STONE_SWORD.color);
@@ -28,6 +29,10 @@ function initToolTextures() {
         
         TOOL_TEXTURES[BLOCK.WOODEN_AXE] = generateToolTexture(TOOL_DEFS.WOODEN_AXE.pattern, TOOL_DEFS.WOODEN_AXE.color);
         TOOL_TEXTURES[BLOCK.STONE_AXE] = generateToolTexture(TOOL_DEFS.STONE_AXE.pattern, TOOL_DEFS.STONE_AXE.color);
+
+        TOOL_TEXTURES[BLOCK.WOODEN_SHOVEL] = generateToolTexture(TOOL_DEFS.WOODEN_SHOVEL.pattern, TOOL_DEFS.WOODEN_SHOVEL.color);
+        TOOL_TEXTURES[BLOCK.STONE_SHOVEL] = generateToolTexture(TOOL_DEFS.STONE_SHOVEL.pattern, TOOL_DEFS.STONE_SHOVEL.color);
+        
         console.log("Tool textures generated.");
     } catch (e) {
         console.error("Failed to generate tool textures:", e);
@@ -185,7 +190,9 @@ const BLOCK_NAMES: Record<number, string> = {
   22: 'Деревянная кирка',
   23: 'Каменная кирка',
   24: 'Деревянный топор',
-  25: 'Каменный топор'
+  25: 'Каменный топор',
+  26: 'Деревянная лопата',
+  27: 'Каменная лопата'
 };
 
 // Inventory State
@@ -275,7 +282,9 @@ function handleCommand(cmd: string) {
             'wooden_pickaxe': 22,
             'stone_pickaxe': 23,
             'wooden_axe': 24,
-            'stone_axe': 25
+            'stone_axe': 25,
+            'wooden_shovel': 26,
+            'stone_shovel': 27
         };
 
         if (ITEM_MAP[itemName]) {
@@ -457,9 +466,6 @@ function updateSlotVisuals(index: number) {
         if (TOOL_TEXTURES[slot.id]) {
             icon.classList.add('item-tool'); // Keeps size/reset
             icon.style.backgroundImage = `url(${TOOL_TEXTURES[slot.id].dataUrl})`;
-        } else if (slot.id === 8) { // Stick
-             icon.classList.add('item-stick');
-             icon.style.backgroundColor = 'transparent';
         } else if (slot.id === 7) { // Planks
              icon.classList.add('item-planks');
              icon.style.backgroundColor = getBlockColor(slot.id);
@@ -583,9 +589,6 @@ function updateDragIcon() {
     if (TOOL_TEXTURES[draggedItem.id]) {
         icon.classList.add('item-tool');
         icon.style.backgroundImage = `url(${TOOL_TEXTURES[draggedItem.id].dataUrl})`;
-    } else if (draggedItem.id === 8) {
-        icon.classList.add('item-stick');
-        icon.style.backgroundColor = 'transparent';
     } else if (draggedItem.id === 7) {
         icon.classList.add('item-planks');
         icon.style.backgroundColor = getBlockColor(draggedItem.id);
@@ -927,6 +930,8 @@ function performAttack() {
      else if (toolId === 25) damage = 4; // Stone Axe
      else if (toolId === 22) damage = 2; // Wood Pick
      else if (toolId === 23) damage = 3; // Stone Pick
+     else if (toolId === 26) damage = 1.5; // Wood Shovel
+     else if (toolId === 27) damage = 2.5; // Stone Shovel
 
      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
      const intersects = raycaster.intersectObjects(scene.children, true); // Recursive to hit mob parts
