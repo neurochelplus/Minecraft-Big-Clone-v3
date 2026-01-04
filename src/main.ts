@@ -1490,7 +1490,9 @@ function updateBreaking(time: number) {
         // Drop Item
         if (currentBreakId !== 0) {
             let toolTexture = null;
-            if (TOOL_TEXTURES[currentBreakId]) {
+            // Only use flat texture for tools (>=20) or Stick (8)
+            // Crafting Table (9) has an icon in TOOL_TEXTURES but should be 3D
+            if (TOOL_TEXTURES[currentBreakId] && (currentBreakId >= 20 || currentBreakId === 8)) {
                  toolTexture = TOOL_TEXTURES[currentBreakId].texture;
             }
             entities.push(new ItemEntity(world, scene, x, y, z, currentBreakId, world.noiseTexture, toolTexture));
@@ -1684,8 +1686,8 @@ function performInteract() {
       // Place Block
       const slot = inventorySlots[selectedSlot];
       if (slot.id !== 0 && slot.count > 0) {
-        // Prevent placing non-blocks (e.g. Stick)
-        if (slot.id === BLOCK.STICK) return;
+        // Prevent placing non-blocks (e.g. Stick, Tools)
+        if (slot.id === BLOCK.STICK || slot.id >= 20) return;
 
         if (hit.face) {
           const p = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
