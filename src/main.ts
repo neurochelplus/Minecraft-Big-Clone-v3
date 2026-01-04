@@ -568,7 +568,7 @@ function initCraftingUI() {
     // Insert into menu
     inventoryMenu.insertBefore(craftingArea, inventoryGrid);
     if (isMobile) {
-        inventoryMenu.insertBefore(mobileCraftingList, inventoryGrid);
+        document.body.appendChild(mobileCraftingList); // Append to body for absolute positioning
     }
 }
 
@@ -948,11 +948,46 @@ function updateMobileCraftingList() {
         const btn = document.createElement('div');
         btn.className = 'craft-btn';
         
+        // Ingredients Container
+        const ingContainer = document.createElement('div');
+        ingContainer.className = 'craft-ingredients';
+        
+        // Render unique ingredients (simplified)
+        let ingCount = 0;
+        for(const [reqId, reqCount] of reqMap) {
+            if (ingCount >= 3) break; // Limit to 3 icons to save space
+            
+            const ingIcon = document.createElement('div');
+            ingIcon.className = 'block-icon';
+            // Copy style logic... reusing helper would be better but inline for now
+            if (TOOL_TEXTURES[reqId]) {
+                ingIcon.classList.add('item-tool');
+                ingIcon.style.backgroundImage = `url(${TOOL_TEXTURES[reqId].dataUrl})`;
+            } else if (reqId === 7) {
+                ingIcon.classList.add('item-planks');
+                ingIcon.style.backgroundColor = getBlockColor(reqId);
+            } else if (reqId === 9) {
+                 ingIcon.style.backgroundColor = getBlockColor(reqId);
+            } else {
+                ingIcon.style.backgroundColor = getBlockColor(reqId);
+                ingIcon.style.backgroundImage = 'var(--noise-url)';
+            }
+            ingContainer.appendChild(ingIcon);
+            ingCount++;
+        }
+        btn.appendChild(ingContainer);
+
+        // Arrow
+        const arrow = document.createElement('div');
+        arrow.className = 'craft-arrow';
+        arrow.innerText = '→';
+        btn.appendChild(arrow);
+
+        // Result Icon
         const icon = document.createElement('div');
         icon.className = 'block-icon';
         const rId = recipe.result.id;
         
-        // Icon logic copy
         if (TOOL_TEXTURES[rId]) {
             icon.classList.add('item-tool');
             icon.style.backgroundImage = `url(${TOOL_TEXTURES[rId].dataUrl})`;
@@ -968,9 +1003,13 @@ function updateMobileCraftingList() {
         
         btn.appendChild(icon);
         
-        const name = document.createElement('span');
-        name.innerText = `${BLOCK_NAMES[rId]} x${recipe.result.count}`;
-        btn.appendChild(name);
+        // Count if > 1
+        if (recipe.result.count > 1) {
+            const countDiv = document.createElement('div');
+            countDiv.className = 'slot-count';
+            countDiv.innerText = recipe.result.count.toString();
+            icon.appendChild(countDiv);
+        }
         
         btn.onclick = () => {
              // Consume from inventory
@@ -1046,6 +1085,22 @@ function toggleInventory(useCraftingTable = false) {
     craftingArea.style.display = isMobile ? 'none' : 'flex'; // Hide grid on mobile
     mobileCraftingList.style.display = isMobile ? 'flex' : 'none';
     
+    // Mobile: Hide controls
+    if (isMobile) {
+        document.getElementById('mobile-ui')!.style.display = 'none';
+        // But keep INV button visible? No, usually close with 'E' logic or back button. 
+        // We need a close button on inventory menu for mobile.
+        // Actually 'btn-inv' is part of mobile-ui. If we hide mobile-ui, we hide the button to close it.
+        // Let's hide specific parts of mobile-ui.
+        document.getElementById('joystick-zone')!.style.display = 'none';
+        document.getElementById('mobile-actions')!.style.display = 'none';
+        // We need a way to close inventory. 
+        // Add a close button to inventory menu? 
+        // Or keep btn-inv visible.
+        // btn-inv is child of mobile-ui.
+        // Let's just hide joystick and actions.
+    }
+    
     updateCraftingGridSize();
     
     // Clear crafting slots when opening/closing?
@@ -1076,6 +1131,12 @@ function toggleInventory(useCraftingTable = false) {
     craftingResult.id = 0;
     craftingResult.count = 0;
     // We already updated visuals in toggle, but UI is hidden now.
+    
+    if (isMobile) {
+        mobileCraftingList.style.display = 'none';
+        document.getElementById('joystick-zone')!.style.display = 'block';
+        document.getElementById('mobile-actions')!.style.display = 'flex';
+    }
 
     controls.lock();
     inventoryMenu.style.display = 'none';

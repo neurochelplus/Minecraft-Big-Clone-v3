@@ -189,17 +189,25 @@ canvas {
 #mobile-crafting-list {
     display: none;
     flex-direction: column;
-    width: 100%;
-    max-height: 200px;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px;
+    max-height: 80vh;
     overflow-y: auto;
+    background: rgba(0,0,0,0.8);
+    padding: 10px;
+    border-radius: 8px;
     gap: 5px;
-    margin-bottom: 10px;
+    z-index: 25;
 }
 
 .craft-btn {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    gap: 5px;
     background: #444;
     border: 1px solid #777;
     padding: 5px;
@@ -212,11 +220,30 @@ canvas {
     background: #666;
 }
 
+.craft-arrow {
+    color: #aaa;
+    font-size: 16px;
+    margin: 0 5px;
+}
+
 .craft-btn .block-icon {
     position: relative;
     width: 32px;
     height: 32px;
     background-color: rgba(0,0,0,0.3);
+}
+
+.craft-ingredients {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    max-width: 80px;
+    justify-content: flex-end;
+}
+
+.craft-ingredients .block-icon {
+    width: 20px;
+    height: 20px;
 }
 
 .slot-hotbar-separator {
