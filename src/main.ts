@@ -7,6 +7,7 @@ import type { GeneratedTexture } from './ToolTextures';
 import { RECIPES } from './Recipes';
 import type { Recipe } from './Recipes';
 import { MobManager } from './MobManager';
+import { PlayerHand } from './PlayerHand';
 import './style.css';
 
 // Tool Textures Registry
@@ -176,6 +177,7 @@ document.addEventListener('keyup', onKeyUp);
 const world = new World(scene);
 const entities: ItemEntity[] = [];
 const mobManager = new MobManager(world, scene, entities);
+const playerHand = new PlayerHand(camera, world.noiseTexture, TOOL_TEXTURES);
 
 // Block Data
 const BLOCK_NAMES: Record<number, string> = {
@@ -1010,6 +1012,10 @@ function refreshInventoryUI() {
     for(let i=0; i<36; i++) {
         updateSlotVisuals(i);
     }
+    // Update hand if active slot changed count or ID
+    const slot = inventorySlots[selectedSlot];
+    playerHand.updateItem(slot ? slot.id : 0);
+
     if (isInventoryOpen) updateCraftingVisuals();
 }
 
@@ -1203,8 +1209,10 @@ function onHotbarChange() {
   const slot = inventorySlots[selectedSlot];
   if (slot && slot.id !== 0) {
     showHotbarLabel(BLOCK_NAMES[slot.id] || 'Unknown Block');
+    playerHand.updateItem(slot.id);
   } else {
     hotbarLabel.style.opacity = '0';
+    playerHand.updateItem(0);
   }
 }
 
@@ -1597,6 +1605,7 @@ document.addEventListener('mousedown', (event) => {
   
   if (event.button === 0) {
       isAttackPressed = true;
+      playerHand.punch();
       performAttack(); // Hit mobs
       startBreaking(); // Start mining block
   }
@@ -1605,6 +1614,7 @@ document.addEventListener('mousedown', (event) => {
 
 document.addEventListener('mouseup', () => {
    if (isAttackPressed) isAttackPressed = false;
+   playerHand.stopPunch();
    isBreaking = false;
    crackMesh.visible = false;
 });
@@ -1677,6 +1687,10 @@ function animate() {
 
   environment.update(delta, controls.object.position);
   
+  // Player Hand Update
+  const isMoving = (moveForward || moveBackward || moveLeft || moveRight) && isOnGround;
+  playerHand.update(delta, isMoving);
+
   updateBreaking(time);
   
   if (isAttackPressed && !isPaused && isGameStarted) {
@@ -2032,6 +2046,7 @@ if (isMobile) {
         lastAttackY = touch.clientY;
 
         isAttackPressed = true;
+        playerHand.punch();
         performAttack();
         startBreaking();
     });
@@ -2075,6 +2090,7 @@ if (isMobile) {
 
         if (touchFound) {
             isAttackPressed = false;
+            playerHand.stopPunch();
             isBreaking = false;
             crackMesh.visible = false;
             attackTouchId = null;

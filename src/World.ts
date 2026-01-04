@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { worldDB } from './DB';
+import { BLOCK_DEFS, hexToRgb } from './BlockTextures';
 
 // Block IDs
 export const BLOCK = {
@@ -31,7 +32,7 @@ type Chunk = {
 
 export class World {
   private scene: THREE.Scene;
-  private chunkSize: number = 16;
+  private chunkSize: number = 32;
   
   // Visuals
   private chunks: Map<string, Chunk> = new Map();
@@ -198,7 +199,7 @@ export class World {
   // --- Core Logic ---
 
   private createNoiseTexture(): THREE.DataTexture {
-    const width = 64; // 16 * 4 (Noise, Leaves, Planks, Crafting Table)
+    const width = 96; // 16 * 6 (Noise, Leaves, Planks, CT_Top, CT_Side, CT_Bottom)
     const height = 16;
     const data = new Uint8Array(width * height * 4); // RGBA
 
@@ -221,7 +222,6 @@ export class World {
           }
       } else if (x >= 32 && x < 48) {
           // Planks (Right 16)
-          // Base: much smoother, brighter "wood"
           const woodGrain = 230 + Math.random() * 20; 
           data[stride] = woodGrain;
           data[stride + 1] = woodGrain;
@@ -233,17 +233,40 @@ export class World {
              data[stride + 2] = 100;
           }
       } else if (x >= 48) {
-          // Crafting Table
-          // Wood color but darker/redder
-          data[stride] = 180;
-          data[stride + 1] = 120;
-          data[stride + 2] = 80;
+          // Crafting Table Slots (48-64: Top, 64-80: Side, 80-96: Bottom)
+          const localX = x % 16;
           
-          // Grid pattern
-          if (x % 5 === 0 || y % 5 === 0) {
-              data[stride] = 50;
-              data[stride + 1] = 30;
-              data[stride + 2] = 20;
+          let def = null;
+          
+          if (x >= 48 && x < 64) def = BLOCK_DEFS.CRAFTING_TABLE_TOP;
+          else if (x >= 64 && x < 80) def = BLOCK_DEFS.CRAFTING_TABLE_SIDE;
+          else {
+              // Bottom - Looks like Planks but darker
+               const woodGrain = 150 + Math.random() * 20; 
+               data[stride] = woodGrain;
+               data[stride + 1] = woodGrain;
+               data[stride + 2] = woodGrain;
+               if (y % 4 === 0) {
+                 data[stride] = 80;
+                 data[stride + 1] = 80;
+                 data[stride + 2] = 80;
+               }
+               continue;
+          }
+
+          // Apply pattern from Def
+          if (def && def.pattern && def.colors) {
+             const char = def.pattern[y][localX];
+             
+             // 1: Primary, 2: Secondary
+             let colorHex = def.colors.primary;
+             if (char === '2') colorHex = def.colors.secondary;
+             
+             const rgb = hexToRgb(colorHex);
+             
+             data[stride] = rgb.r;
+             data[stride + 1] = rgb.g;
+             data[stride + 2] = rgb.b;
           }
       }
     }
@@ -516,7 +539,8 @@ export class World {
         const worldZ = startZ + z;
 
         const noiseValue = this.noise2D(worldX / this.TERRAIN_SCALE, worldZ / this.TERRAIN_SCALE);
-        let height = Math.floor(noiseValue * this.TERRAIN_HEIGHT) + this.OFFSET;
+        // Ensure OFFSET is at least 18-20 to allow 16+ layers of stone (since bedrock is y=0)
+        let height = Math.floor(noiseValue * this.TERRAIN_HEIGHT) + 20;
         
         if (height < 1) height = 1;
         if (height >= this.chunkSize) height = this.chunkSize - 1;
@@ -602,7 +626,7 @@ export class World {
       // Color Logic
       let r = 0.5, g = 0.5, b = 0.5;
       if (type === BLOCK.STONE) { r=0.5; g=0.5; b=0.5; }
-      else if (type === BLOCK.BEDROCK) { r=0.13; g=0.13; b=0.13; }
+      else if (type === BLOCK.BEDROCK) { r=0.05; g=0.05; b=0.05; } // Very Dark
       else if (type === BLOCK.DIRT) { r=0.54; g=0.27; b=0.07; } // Brown
       else if (type === BLOCK.GRASS) {
         if (side === 'top') { r=0.33; g=0.6; b=0.33; } // Green
@@ -643,24 +667,36 @@ export class World {
       }
 
       // UVs 
-      // Atlas: 
-      // 0.0 - 0.25: Solid (Noise)
-      // 0.25 - 0.50: Leaves (Transparent)
-      // 0.50 - 0.75: Planks (Striped)
-      // 0.75 - 1.00: Crafting Table
+      // Atlas (Total slots: 6, step 1/6 = 0.16666...)
+      // 0: Noise
+      // 1: Leaves
+      // 2: Planks
+      // 3: CT Top
+      // 4: CT Side
+      // 5: CT Bottom
+      const uvStep = 1.0 / 6.0;
       const uvInset = 0.001;
       let u0 = 0 + uvInset;
-      let u1 = 0.25 - uvInset;
+      let u1 = uvStep - uvInset;
       
       if (type === BLOCK.LEAVES) {
-          u0 = 0.25 + uvInset;
-          u1 = 0.50 - uvInset;
+          u0 = uvStep * 1 + uvInset;
+          u1 = uvStep * 2 - uvInset;
       } else if (type === BLOCK.PLANKS) {
-          u0 = 0.50 + uvInset;
-          u1 = 0.75 - uvInset;
+          u0 = uvStep * 2 + uvInset;
+          u1 = uvStep * 3 - uvInset;
       } else if (type === BLOCK.CRAFTING_TABLE) {
-          u0 = 0.75 + uvInset;
-          u1 = 1.0 - uvInset;
+          if (side === 'top') {
+              u0 = uvStep * 3 + uvInset;
+              u1 = uvStep * 4 - uvInset;
+          } else if (side === 'bottom') {
+              u0 = uvStep * 5 + uvInset;
+              u1 = uvStep * 6 - uvInset;
+          } else {
+              // Side
+              u0 = uvStep * 4 + uvInset;
+              u1 = uvStep * 5 - uvInset;
+          }
       }
 
       uvs.push(u0,0, u1,0, u0,1, u1,1);
