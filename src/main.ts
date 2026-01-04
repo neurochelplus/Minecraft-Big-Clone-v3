@@ -1149,6 +1149,8 @@ function toggleInventory(useCraftingTable = false) {
     
     if (isMobile) {
         mobileCraftingList.style.display = 'none';
+        const mobileUi = document.getElementById('mobile-ui');
+        if (mobileUi) mobileUi.style.display = 'block';
         document.getElementById('joystick-zone')!.style.display = 'block';
         document.getElementById('mobile-actions')!.style.display = 'flex';
     }

@@ -215,6 +215,18 @@ canvas {
   margin-top: 10px;
 }
 
+/* Mobile Slot Sizing */
+.is-mobile .slot {
+    width: 30px;
+    height: 30px;
+    font-size: 10px;
+}
+
+.is-mobile .block-icon {
+    width: 20px;
+    height: 20px;
+}
+
 /* Mobile Crafting List */
 #mobile-crafting-list {
     display: none;
@@ -223,14 +235,29 @@ canvas {
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
-    width: 200px;
+    width: 40vw; /* Adaptive width */
+    max-width: 200px;
     max-height: 80vh;
     overflow-y: auto;
-    background: rgba(0,0,0,0.8);
+    background-color: rgba(0, 0, 0, 0.8); /* Match inventory */
     padding: 10px;
     border-radius: 8px;
     gap: 5px;
     z-index: 25;
+    /* Ensure scrollbar works */
+    pointer-events: auto;
+}
+
+/* Scrollbar styling for list */
+#mobile-crafting-list::-webkit-scrollbar {
+    width: 5px;
+}
+#mobile-crafting-list::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3); 
+}
+#mobile-crafting-list::-webkit-scrollbar-thumb {
+    background: #555; 
+    border-radius: 3px;
 }
 
 .craft-btn {
