@@ -569,6 +569,15 @@ function initCraftingUI() {
     inventoryMenu.insertBefore(craftingArea, inventoryGrid);
     if (isMobile) {
         document.body.appendChild(mobileCraftingList); // Append to body for absolute positioning
+        
+        // Prevent camera movement when scrolling list
+        mobileCraftingList.addEventListener('touchmove', (e) => {
+            e.stopPropagation();
+        }, { passive: false });
+        
+        mobileCraftingList.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+        }, { passive: false });
     }
 }
 
@@ -906,6 +915,25 @@ function updateMobileCraftingList() {
     // For simplicity, let's just show all RECIPES.
     
     RECIPES.forEach((recipe, idx) => {
+        // Filter logic for Mobile:
+        // If NOT using crafting table (isCraftingTable == false), only allow 2x2 recipes.
+        if (!isCraftingTable) {
+            let needs3x3 = false;
+            
+            if (recipe.pattern) {
+                if (recipe.pattern.length > 2 || recipe.pattern[0].length > 2) {
+                    needs3x3 = true;
+                }
+            } else if (recipe.ingredients) {
+                // Shapeless: > 4 items requires 3x3
+                let totalIngredients = 0;
+                recipe.ingredients.forEach(i => totalIngredients += i.count);
+                if (totalIngredients > 4) needs3x3 = true;
+            }
+            
+            if (needs3x3) return; // Skip this recipe
+        }
+
         // Calculate max craftable
         // 1. Tally Inventory
         const invMap = new Map<number, number>();
