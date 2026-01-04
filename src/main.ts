@@ -1040,6 +1040,21 @@ function initInventoryUI() {
   hotbarContainer.innerHTML = '';
   inventoryGrid.innerHTML = '';
 
+  // Add Close Button for Mobile
+  if (!document.getElementById('btn-close-inv')) {
+      const closeBtn = document.createElement('div');
+      closeBtn.id = 'btn-close-inv';
+      closeBtn.innerText = 'X';
+      closeBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          toggleInventory();
+      });
+      closeBtn.addEventListener('click', (e) => { // Fallback
+          toggleInventory();
+      });
+      inventoryMenu.appendChild(closeBtn);
+  }
+
   // Hotbar Container (0-8)
   for (let i = 0; i < 9; i++) {
     hotbarContainer.appendChild(initSlotElement(i, true));

@@ -144,6 +144,36 @@ canvas {
   align-items: center;
 }
 
+/* Mobile Inventory Adjustments */
+.is-mobile #inventory-menu {
+    left: 35%; /* Shift left to make room for crafting list */
+    transform: translate(-50%, -50%);
+    width: 60%; /* Limit width */
+    max-width: 350px;
+}
+
+#btn-close-inv {
+    display: none;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 30px;
+    height: 30px;
+    background: #cc3333;
+    color: white;
+    border: 2px solid #fff;
+    border-radius: 4px;
+    font-weight: bold;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 26;
+}
+
+.is-mobile #btn-close-inv {
+    display: flex;
+}
+
 #crafting-area {
     display: flex;
     align-items: center;
